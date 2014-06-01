@@ -1,0 +1,184 @@
+#!/usr/local/bin/perl
+# $Id: blq,v 1.4 1999/08/20 05:55:33 chip Exp $
+#
+# blq - block list query
+#
+# See <http://www.unicom.com/sw/#blq> for latest version.
+#
+# Chip Rosenthal
+# <chip@unicom.com>
+#
+# Perl POD documentation at the end.
+#
+
+$0 =~ s!.*/!!;
+
+use strict;
+use Net::hostent;
+use Socket;
+use vars qw($Usage %KnownZones $DefaultId $SelectedId $SelectedZone $Query $ex);
+
+%KnownZones = (
+	"rbl" => "rbl.maps.vix.com",
+	"shub" => "spamips.rbl.shub-inter.net",
+	"dul" => "dul.maps.vix.com",
+	"rss" => "relays.mail-abuse.org",
+	#"imrss" => "dssl.imrss.org",
+	"orbs" => "relays.orbs.org",
+);
+
+$DefaultId = "rbl";
+
+$Usage = "usage: $0 [list-id-or-zone] host-name-or-address\n"
+	. "  (known list-ids = " . join(", ", sort keys %KnownZones) . ")\n";
+
+#
+# Grab the command line arguments.
+#
+$SelectedId = (@ARGV > 1 ? shift(@ARGV) : $DefaultId);
+die $Usage
+	unless (@ARGV == 1);
+$Query = shift(@ARGV);
+
+#
+# Figure out which zone we are querying.
+#
+if ($SelectedId =~ /\./) {
+	# presume a DNS zone was specified
+	$SelectedZone = $SelectedId
+} else {
+	$SelectedZone = $KnownZones{$SelectedId};
+	die "$0: unknown block list \"$SelectedId\"\n$Usage"
+		if (!defined($SelectedZone));
+}
+
+#
+# Perform the query.
+#
+my ($addr, $name, $h, $h1);
+$ex = 0;
+if ($Query =~ /^(\d+)\.(\d+)\.(\d+)\.(\d+)$/) {
+
+	# query specified as an address
+	$addr = $Query;
+	$h = gethostbyaddr(inet_aton($addr));
+	$name = ($h ? $h->name : undef);
+	print blq($name, $addr, $SelectedZone), "\n";
+
+} else {
+
+	# query specified as a hostname
+	$name = $Query;
+	$h = gethostbyname($name)
+		or die "$0: gethostbyname($name) failed\n";
+	for $addr ( @{$h->addr_list} ) {
+		$h1 = gethostbyaddr($addr);
+		if ($h1 && lc($h1->name) ne lc($name)) {
+			my $name1 = $name . "(" . $h1->name . ")";
+			print blq($name1, inet_ntoa($addr), $SelectedZone), "\n";
+		} else {
+			print blq($name, inet_ntoa($addr), $SelectedZone), "\n";
+		}
+	}
+
+}
+exit($ex);
+
+
+sub blq
+{
+	die q[usage: blq($name, $addr, $zone)]
+		unless (@_ == 3);
+	my($name, $addr, $zone) = @_;
+
+	$addr =~ /^(\d+)\.(\d+)\.(\d+)\.(\d+)$/
+		or die "$0: bad address \"$addr\"\n";
+	my $rbl = gethostbyname("$4.$3.$2.$1.$zone");
+
+	my @result = ();
+	push(@result, $addr);
+	push(@result, $name)
+		if ($name);
+	push(@result, ":", $zone, ":");
+	push(@result, ($rbl ? "BLOCKED" : "ok"));
+	$ex = 2
+		if ($rbl);
+	join(" ", @result);
+}
+
+__END__
+
+=head1 NAME
+
+blq - Inquire an email block list server.
+
+=head1 SYNOPSIS
+
+B<blq> [list-id-or-zone] host-name-or-address
+
+=head1 DESCRIPTION
+
+Several organizations publish mail abuse lists via DNS.  B<blq> inquires
+those lists to determine if a particular host is present.
+
+The I<list-id-or-zone> selects which list to query.  You may either
+specify the full DNS zone (such as "rbl.maps.vix.com"), or one of
+the following IDs:
+
+ List-Id     List-Zone
+ -------     --------------------
+ rbl         rbl.maps.vix.com
+ dul         dul.maps.vix.com
+ rss         relays.mail-abuse.org 
+ shub        spamips.rbl.shub-inter.net
+ orbs        relays.orbs.org
+ imrss       dssl.imrss.org                  This one has been discontinued
+
+If not specified, the default I<list-id-or-zone> is B<rbl>.
+
+The I<host-name-or-address> is the query to perform, specified either as a
+name or IP address.  All the block lists are indexed by address, not name.
+Thus, a given hostname will be resolved to an address for the query.
+
+If a name resolves to multiple addresses, they all will be queried.
+
+The output contains three colon-delimited fields, and looks
+something like:
+
+ 192.168.117.89 relay.spamhausen.com : rbl.maps.vix.com : BLOCKED
+
+The first field lists the query:  the host address followed by
+the name it resolves to.
+
+The second field lists the zone queried.
+
+The third field lists the result:  "ok" if the host is not listed
+or "BLOCKED" if it is.
+
+=head1 SEE ALSO
+
+ http://mail-abuse.org/rbl/
+ http://mail-abuse.org/dul/
+ http://relays.radparker.com/
+ http://www.imrss.org/
+ http://www.orbs.org/
+
+=head1 DIAGNOSTICS
+
+An exit status of zero indicates the host was not listed ("ok").  An exit
+status of two indicates that it was listed ("BLOCKED").  Any other
+non-zero exit status is an error.
+
+=head1 BUGS
+
+Even though I included support for ORBS and IMRSS, I do not support
+their use for email filtering.  I do use the others, but I urge you to
+visit their web pages, read their policies, and decide for yourself.
+
+=head1 AUTHOR
+
+ Chip Rosenthal
+ <chip@unicom.com>
+
+ $Id: blq,v 1.4 1999/08/20 05:55:33 chip Exp $
+ See http://www.unicom.com/sw/#blq for latest version.

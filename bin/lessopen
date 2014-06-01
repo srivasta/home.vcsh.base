@@ -1,0 +1,84 @@
+#!/bin/bash
+# Decode directories:
+if [ -d "$1" ]; then
+    echo "$1:"; ls -als $1
+else
+    case "$1" in
+	*.tar.gz|*.tgz|*.tar.Z)
+	    tar tzvvf $1 
+	    zcat $1 
+	    ;;
+	*.Z|*.gz)
+	    gunzip -c $1
+	    ;;
+	*.bz2)
+	    bunzip2 -ckd $1
+	    ;;
+	*.bz)
+	    bunzip -ckd $1
+	    ;;
+	*.tar)
+	    tar tvf $1 
+	    cat $1
+	    ;;
+	*.deb)
+	    echo "$1:"; 
+            if [  -x /usr/bin/dpkg ]; then
+                dpkg --info $1; 
+                echo -e '\n*** Contents:'; 
+                dpkg-deb --contents $1 
+            else
+	        echo -e '\n*** Control:'; 
+	        ar -p $1 control.tar.gz | tar zvvft -
+	        echo -e '\n*** Contents:';      
+	        ar -p $1 data.tar.gz | tar zvvft -
+            fi
+	    ;;
+	*.zip|*.ZIP)
+	    if [ -x /usr/bin/unzip ]; then 
+		unzip -v $1; 
+	    else 
+		echo "No unzip available"; 
+	    fi 
+	    ;;
+        *.lzh)
+            if [  -x /usr/bin/lha ]; then
+		lha v $1;
+	    else
+		echo "No lha available";
+	    fi
+	    ;;
+        *.rpm)
+            if [  -x /usr/bin/rpm ]; then
+		echo $1;
+		 rpm -q -i -p $1; 
+		 echo -e '\n*** Contents:';
+		 rpm -q -l -p $1;
+	    else
+		echo "No rpm available";
+	    fi
+	    ;;
+        *.zoo)
+	    if [  -x /usr/bin/zoo ]; then
+		zoo v $1;
+	    else
+		echo "No zoo available";
+	    fi
+	    ;;
+	*.arj|*.ARJ)
+	    if [  -x /usr/bin/unarj ]; then
+		unarj -v $1;
+	    else
+		echo "No unarj available";
+	    fi
+	    ;;
+	*.gif|*.jpeg|*.jpg|*.pcd|*.png|*.tga|*.tiff|*.tif)
+	    if [ -x /usr/X11R6/bin/identify ]; then 
+		/usr/X11R6/bin/identify $1;
+	    else 
+		echo -e "No identify available
+		echo -e Install ImageMagick to browse images"; 
+	    fi 
+	    ;;
+    esac
+fi

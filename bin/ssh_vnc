@@ -1,0 +1,129 @@
+#!/bin/sh
+#                               -*- Mode: Sh -*- 
+# ssh_vnc --- 
+# Author           : Manoj Srivastava ( srivasta@glaurung.green-gryphon.com ) 
+# Created On       : Mon Jan 22 09:52:47 2001
+# Created On Node  : glaurung.green-gryphon.com
+# Last Modified By : Manoj Srivastava
+# Last Modified On : Mon Jan 22 09:58:15 2001
+# Last Machine Used: glaurung.green-gryphon.com
+# Update Count     : 1
+# Status           : Unknown, Use with caution!
+# HISTORY          : 
+# Description      : 
+# 
+# 
+
+
+set -e
+
+ssh -C -f -g -L 11120:kenobee:5900 r2d2 sleep 10
+xvncviewer -shared -encodings hextile localhost:11120
+
+# On anakin:
+# ssh -L 9900:flanders.internal.stdc.com:3389 10.1.0.10
+# At Home
+# ssh -L 9900:localhost:9900 anakin
+# rdesktop -u root -p - -g 1024x768 -z -x l localhost:9900
+
+# ssh commands may be chained. 
+
+# dd if=pictures.tar.gz | ssh gateway "ssh internal \"dd of=pictures.tar.gz\""
+
+# Port forwarding
+
+# This is useful where your have your local machine outside a
+# firewall; a gateway host on the DMZ; and a third machine invisible
+# to the outside on the internal network providing services.
+
+# Example: Connect your local POP port to the pop port on
+# mailhost. Also do the same with the SMTP port. The mailhost is not
+# directly visible from the outside.
+
+# ssh -q -f -C -N -L 110:mailhost:110 -L 25:mailhost:25 -l user -N gatewayhost
+#
+# -N tells SSH we don't want to execute a remote command. Not terribly
+#    necessary, but makes it safer.
+# -C compress all data
+#
+# -f tells ssh to go into the background (daemonize).
+#
+# -q tells ssh to be quiet
+
+# Use ssh as a sock proxy/server. Here, we take anythinfg sent to the
+# localhost port 8080, an, depending on the protocol, connect to the
+# remote host.
+
+# ssh -D 8080 -f -C -q -N remote.host.com
+#
+# or use both:
+# ssh -C -N -D 8080 -L 110:mailhost:110 -L 25:mailhost:25 -l user -N gatewayhost
+#
+
+# Forward the ssh port:
+
+# Here is how to connect to, say, kamadhenu:
+# ssh -f -C -N -L 8081:10.1.0.10:22 anakin.stdc.com
+# ssh -p 8081 localhost 
+
+# +---------------+        +---------------+        +--------------------+
+# |               |        |               |        |                    |
+# | local machine |        |    gateway    |        |    internal box    |
+# |               |        |   (anakin)    |        |                    |
+# |         8081:  >-------|               |------->| :22                |
+# |               |        |\_____________/|        |                    |
+# |               |        |               |        |                    |
+# +---------------+        +---------------+        +--------------------+
+
+
+
+# You can set it up the other way around too: say, is you do not have
+# a gateway, but do need to tunnel:
+# work% ssh -f -C -N -R 2222:localhost:22 home.machine
+#  (if you run your home sshd on, say, port 42424, add -p 42424 above)
+#
+# This assumes that you have something like this on your home machines
+# /etc/ssh/sshd_config
+# ...
+# TCPKeepAlive yes
+# ClientAliveInterval 30
+# ClientAliveCountMax 99999
+# ...
+#
+# If not, you need to remove the -f, log in to the home machine, and
+# run ping -i 5 127.0.0.1, or something.
+#
+# now, go home.
+# home% ssh -p 2222 localhost (and bang, you are in the firewall).
+#
+# Heck, if you open post 2222 at home for remote access, you can use
+# you laptop from anywhere and say: ssh -p 2222 home.machine, and you
+# have access from anyhere.
+# You also need the following in /etc/ssh/sshd_config on the home machine:
+# ...
+# GatewayPorts yes
+# ...
+#
+# This makes it possible that forwarded ports on home machine can be reached
+# from another host.
+
+# Chained port forwarding
+
+# If you have an super secure internal machine that only accepts ssh
+# from another internal machine, and you have a gateway host, you can
+# still see ports on the inner machine, For example, postgresql
+
+# home% ssh -t -L 5432:localhost:1999 gateway \
+#            ssh -t middle                    \
+#            ssh -t super_secure              \
+#       ssh -t -R 1999:127.0.0.1:5432 gateway
+
+
+# +---------------+        +---------------+        +--------------------+
+# |               |        |               |        |                    |
+# | local machine |        |    gateway    |        |    internal box    |
+# |               |        |   (anakin)    |        |                    |
+# |         5432:  >-------| 1999    :1999 |------->| :5432              |
+# |               |        |               |        |                    |
+# |               |        |               |        |                    |
+# +---------------+        +---------------+        +--------------------+

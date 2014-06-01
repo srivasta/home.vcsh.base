@@ -1,0 +1,30 @@
+#! /bin/sh
+#                               -*- Mode: Sh -*- 
+# run-fetchmail --- 
+# Author           : Manoj Srivastava ( srivasta@glaurung.internal.golden-gryphon.com ) 
+# Created On       : Wed Mar 15 13:54:37 2006
+# Created On Node  : glaurung.internal.golden-gryphon.com
+# Last Modified By : Manoj Srivastava
+# Last Modified On : Wed Mar 15 14:21:48 2006
+# Last Machine Used: glaurung.internal.golden-gryphon.com
+# Update Count     : 12
+# Status           : Unknown, Use with caution!
+# HISTORY          : 
+# Description      : 
+# 
+# 
+
+#set -e
+
+command=$1
+
+CONFDIR_TOP=$HOME/etc/mail/fetchmail
+if [ ! -d "$CONFDIR_TOP"/feeds ]; then
+    echo no confdir; 
+    exit 2
+fi
+
+cd "$CONFDIR_TOP"/feeds
+for i in *; do
+    env FETCHMAILHOME=$CONFDIR_TOP/feeds/$i fetchmail --invisible -L $HOME/var/log/fetchmail.$i.log ${command:-$i}
+done

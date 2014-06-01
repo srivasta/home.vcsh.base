@@ -1,0 +1,9 @@
+#! /bin/sh
+# by Alexandre Oliva <oliva@lsd.ic.unicamp.br>
+# Output active file for nnml/nnmh sub-directories of the current directory.
+# Usage: cd $HOME/Mail; rebuildactive > active
+ls -1d */. */[0-9]* | gawk -F/ '
+function min(a,b) { if (b+0 == 0 || a < b) return a; else return b; }
+function max(a,b) { if (b+0 == 0 || a > b) return a; else return b; }
+{ mi[$1] = min($2+0,mi[$1]); ma[$1] = max($2+0,ma[$1]); }
+END { for (v in mi) print v" "ma[v]" "mi[v]" y"};' | sort

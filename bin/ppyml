@@ -1,0 +1,8 @@
+#!/usr/bin/perl
+
+use YAML qw{DumpFile LoadFile};
+use Data::Dumper;
+$Data::Dumper::Indent = 1;
+
+my $perl_scalar = LoadFile($ARGV[0]);
+print Dumper($perl_scalar);

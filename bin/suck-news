@@ -1,0 +1,8 @@
+#!/bin/sh
+
+set -e
+
+ssh -C -f -g  -L 11119:news.datasync.com:119 datasync.com sleep 6000
+
+get-news -port 11119 localhost
+

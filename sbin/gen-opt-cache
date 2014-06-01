@@ -1,0 +1,48 @@
+#!/bin/bash
+################################################################
+# Copyright (C) 2002 Robert Anderson
+# 
+# See the file "COPYING" for further information about
+# the copyright and warranty status of this work.
+# 
+
+#set -x
+
+collect_opts() {  
+  # Two options
+  tla $subcmd --help | grep -- "-[a-zA-Z]," | awk '{print $1 $2}' | tr "\n" " " | tr "," " " > $subcmdfile-options
+  
+  # Single short option
+  tla $subcmd --help | grep "^  -[a-zA-Z] " | awk '{print $1}' | tr "\n" " " >> $subcmdfile-options
+  
+  # Single long option
+  tla $subcmd --help | grep "^  --[a-zA-Z]" | awk '{print $1}' | tr "\n" " " >> $subcmdfile-options
+}
+
+cachedir=~/var/run/tla-cmd-opts
+
+rm -rf $cachedir
+mkdir $cachedir
+cd $cachedir
+
+tla help | grep "[[:space:]]:[[:space:]]" | awk '{print $1}' | tr "\n" " " > tla-subcmds
+
+
+# Collect options
+subcmds=`cat tla-subcmds`
+ 
+for subcmd in $subcmds; do
+  subcmdfile=$subcmd
+  collect_opts
+done
+subcmd=""
+subcmdfile="tla"
+collect_opts
+
+###  Local Variables:
+###  mode: shell-script
+###  End:
+
+# arch-tag: 4726ee27-bf08-4148-8cef-c77ecd8ad3aa
+
+

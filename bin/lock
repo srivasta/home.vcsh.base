@@ -1,0 +1,36 @@
+#! /bin/sh
+#                               -*- Mode: Sh -*- 
+# lock --- 
+# Author           : Manoj Srivastava ( srivasta@calidity.internal.golden-gryphon.com ) 
+# Created On       : Thu May 18 16:54:43 2006
+# Created On Node  : calidity.internal.golden-gryphon.com
+# Last Modified By : Manoj Srivastava
+# Last Modified On : Fri May 19 12:28:53 2006
+# Last Machine Used: calidity.internal.golden-gryphon.com
+# Update Count     : 8
+# Status           : Unknown, Use with caution!
+# HISTORY          : 
+# Description      : 
+# 
+# 
+
+RUN_DIR=/var/run
+
+rm -f $RUN_DIR/fgconsole
+fgconsole > $RUN_DIR/fgconsole
+user=$(who | grep " :0" | awk '{print $1}')
+if [ "$user" != "" ]; then
+    rm -f $RUN_DIR/fgconsole
+    echo 7 > $RUN_DIR/fgconsole
+    su -c 'xautolock -disable' "$user"
+    SSH_AUTH_SOCK=$(cat /home/$user/lib/.sec/ssh-agent-info)
+    export SSH_AUTH_SOCK
+    su -p -c 'ssh-add -D' "$user"
+fi
+CVT=$(cat $RUN_DIR/fgconsole)
+chvt 1
+echo "$user " > $RUN_DIR/vlocked
+openvt -f -c 63 -w -s -- vlock -a
+deallocvt
+chvt "$CVT"
+rm -f $RUN_DIR/fgconsole

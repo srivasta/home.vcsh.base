@@ -1,0 +1,140 @@
+MOMspider/1.00a starting at Tue, 23 Jan 1996 11:31:36 (23 Jan 1996 16:31:36 GMT)
+Reading instructions from /users/pilgrim_staff/srivasta/etc/momspider/instruct
+Starting Infostructure Manoj at Tue, 23 Jan 1996 11:31:37 
+Traversing http://www.pilgrim.umass.edu/~srivasta/index.html ... 200
+Done Traversing http://www.pilgrim.umass.edu/~srivasta/index.html
+at Tue, 23 Jan 1996 11:40:56 -- 4 remaining on queue
+Traversing http://www.pilgrim.umass.edu/ ... 200
+Done Traversing http://www.pilgrim.umass.edu/
+at Tue, 23 Jan 1996 11:49:04 -- 4 remaining on queue
+Traversing http://www.pilgrim.umass.edu/~srivasta/scripts/ ... 200
+Done Traversing http://www.pilgrim.umass.edu/~srivasta/scripts/
+at Tue, 23 Jan 1996 11:56:04 -- 17 remaining on queue
+Traversing http://www.pilgrim.umass.edu/~srivasta/emacs/emacs.html ... 200
+Testing http://www.pilgrim.umass.edu/~srivasta/perl/perl.html ... 404
+Testing http://www.cs.indiana.edu/elisp/ange/ange-ftp.html ... 404
+Testing http://www.cs.indiana.edu/elisp/dired.html ... 404
+Done Traversing http://www.pilgrim.umass.edu/~srivasta/emacs/emacs.html
+at Tue, 23 Jan 1996 12:00:31 -- 16 remaining on queue
+Traversing http://www.pilgrim.umass.edu/~srivasta/ ... 200
+Done Traversing http://www.pilgrim.umass.edu/~srivasta/
+at Tue, 23 Jan 1996 12:00:32 -- 15 remaining on queue
+Traversing http://www.pilgrim.umass.edu/footnote.html ... 200
+Done Traversing http://www.pilgrim.umass.edu/footnote.html
+at Tue, 23 Jan 1996 12:00:46 -- 14 remaining on queue
+Traversing http://www.pilgrim.umass.edu/~srivasta/scripts/Gopherd ... 200
+Done Traversing http://www.pilgrim.umass.edu/~srivasta/scripts/Gopherd
+at Tue, 23 Jan 1996 12:01:01 -- 13 remaining on queue
+Traversing http://www.pilgrim.umass.edu/~srivasta/scripts/Jughead ... 200
+Done Traversing http://www.pilgrim.umass.edu/~srivasta/scripts/Jughead
+at Tue, 23 Jan 1996 12:01:17 -- 12 remaining on queue
+Traversing http://www.pilgrim.umass.edu/~srivasta/scripts/NHttpd ... 200
+Done Traversing http://www.pilgrim.umass.edu/~srivasta/scripts/NHttpd
+at Tue, 23 Jan 1996 12:01:31 -- 11 remaining on queue
+Traversing http://www.pilgrim.umass.edu/~srivasta/scripts/Plexus ... 200
+Done Traversing http://www.pilgrim.umass.edu/~srivasta/scripts/Plexus
+at Tue, 23 Jan 1996 12:02:31 -- 10 remaining on queue
+Traversing http://www.pilgrim.umass.edu/~srivasta/scripts/certindices ... 200
+Testing / ... 600
+Testing /images/40/home_btn.gif ... 600
+Testing $main::Config{'Base'}{'Server'}$main::Config{'Base'}{'URLBase'}$main::Config{$type}{'URL'}security.html ... 600
+Testing /images/40/go_prev_btn.gif ... 600
+Testing /images/40/go_up_btn.gif ... 600
+Testing /images/40/go_next_btn.gif ... 600
+Testing /images/40/per.gif ... 600
+Testing /cgi-bin/mail ... 600
+Testing /pub/misc/validate/html-check.html ... 600
+Testing /images/misc/valid_html.gif ... 600
+Testing /~srivasta/ ... 600
+Testing /images/misc/manoj_sig.gif ... 600
+Testing $main::Config{'Base'}{'Server'}$main::Config{'Base'}{'URLBase'}$main::Config{$type}{'URL'}\ ... 600
+Done Traversing http://www.pilgrim.umass.edu/~srivasta/scripts/certindices
+at Tue, 23 Jan 1996 12:02:47 -- 9 remaining on queue
+Traversing http://www.pilgrim.umass.edu/~srivasta/scripts/clean_mirror ... 200
+Done Traversing http://www.pilgrim.umass.edu/~srivasta/scripts/clean_mirror
+at Tue, 23 Jan 1996 12:03:01 -- 8 remaining on queue
+Traversing http://www.pilgrim.umass.edu/~srivasta/scripts/dcerfc2html ... 200
+Testing http://www.pilgrim.umass.edu/~srivasta/scripts/\ ... 404
+Done Traversing http://www.pilgrim.umass.edu/~srivasta/scripts/dcerfc2html
+at Tue, 23 Jan 1996 12:04:31 -- 7 remaining on queue
+Traversing http://www.pilgrim.umass.edu/~srivasta/scripts/drafts2html ... 200
+Testing \\ ... 600
+Done Traversing http://www.pilgrim.umass.edu/~srivasta/scripts/drafts2html
+at Tue, 23 Jan 1996 12:04:47 -- 6 remaining on queue
+Traversing http://www.pilgrim.umass.edu/~srivasta/scripts/error2html ... 200
+Done Traversing http://www.pilgrim.umass.edu/~srivasta/scripts/error2html
+at Tue, 23 Jan 1996 12:05:01 -- 5 remaining on queue
+Traversing http://www.pilgrim.umass.edu/~srivasta/scripts/new-html-check ... 200
+Testing http://www.pilgrim.umass.edu/~srivasta/scripts/$main::SpecsBase/html-0.html ... 404
+Testing http://www.pilgrim.umass.edu/~srivasta/scripts/$main::SpecsBase/html-1.html ... 404
+Testing http://www.pilgrim.umass.edu/~srivasta/scripts/$main::SpecsBase/html.html ... 404
+Testing http://www.pilgrim.umass.edu/~srivasta/scripts/$main::SpecsBase/html-3.html ... 404
+Testing http://www.pilgrim.umass.edu/~srivasta/scripts/$main::SpecsBase/html-mcom.html ... 404
+Testing http://www.pilgrim.umass.edu/~srivasta/scripts/$main::SpecsBase/html-hj.html ... 404
+Testing http://www.pilgrim.umass.edu/~srivasta/scripts/$main::SpecsBase/html-0s.html ... 404
+Testing http://www.pilgrim.umass.edu/~srivasta/scripts/$main::SpecsBase/html-1s.html ... 404
+Testing http://www.pilgrim.umass.edu/~srivasta/scripts/$main::SpecsBase/html-s.html ... 404
+Testing http://www.pilgrim.umass.edu/~srivasta/scripts/$main::SpecsBase/html-3s.html ... 404
+Testing http://www.pilgrim.umass.edu/~srivasta/scripts/$main::SpecsBase/html-mcoms.html ... 404
+Testing http://www.pilgrim.umass.edu/~srivasta/scripts/$main::SpecsBase/html-hjs.html ... 404
+Testing http://www.pilgrim.umass.edu/~srivasta/scripts/!!SELFURL!! ... 404
+Testing http://www.pilgrim.umass.edu/~srivasta/scripts/$main::Pictures{$dtd} ... 404
+Done Traversing http://www.pilgrim.umass.edu/~srivasta/scripts/new-html-check
+at Tue, 23 Jan 1996 12:11:19 -- 4 remaining on queue
+Traversing http://www.pilgrim.umass.edu/~srivasta/scripts/povlog ... 200
+Done Traversing http://www.pilgrim.umass.edu/~srivasta/scripts/povlog
+at Tue, 23 Jan 1996 12:11:33 -- 3 remaining on queue
+Traversing http://www.pilgrim.umass.edu/~srivasta/scripts/rc2 ... 200
+Done Traversing http://www.pilgrim.umass.edu/~srivasta/scripts/rc2
+at Tue, 23 Jan 1996 12:12:33 -- 2 remaining on queue
+Traversing http://www.pilgrim.umass.edu/~srivasta/scripts/rc3 ... 200
+Done Traversing http://www.pilgrim.umass.edu/~srivasta/scripts/rc3
+at Tue, 23 Jan 1996 12:12:48 -- 1 remaining on queue
+Traversing http://www.pilgrim.umass.edu/~srivasta/scripts/rfci2bib ... 200
+Done Traversing http://www.pilgrim.umass.edu/~srivasta/scripts/rfci2bib
+at Tue, 23 Jan 1996 12:13:04 -- 0 remaining on queue
+Summary of Results:
+           .---------------------------------------------------------------.
+           |  References   |  Unique URLs  |  Local URLs   |  Remote URLs  |
+           | number   pct  | number   pct  | number   pct  | number   pct  |
+           |---------------+---------------+---------------+---------------|
+Traversed  |      0   0.00 |     20  13.16 |     20  20.41 |      0   0.00 |
+Tested     |    143  39.83 |    144  94.74 |     95  96.94 |     49  90.74 |
+Reused     |    206  57.38 |      0   0.00 |      0   0.00 |      0   0.00 |
+Avoided    |      0   0.00 |      0   0.00 |      0   0.00 |      0   0.00 |
+Untestable |     10   2.79 |      8   5.26 |      3   3.06 |      5   9.26 |
+           |---------------+---------------+---------------+---------------|
+Broken     |     58  16.16 |     58  38.16 |     38  38.78 |     20  37.04 |
+Redirected |      0   0.00 |      0   0.00 |      0   0.00 |      0   0.00 |
+Changed  7 |     35   9.75 |     37  24.34 |     30  30.61 |      7  12.96 |
+Expired  0 |      0   0.00 |      0   0.00 |      0   0.00 |      0   0.00 |
+           |---------------+---------------+---------------+---------------|
+Local      |    295  82.17 |     98  64.47 |     98 100.00 |      0   0.00 |
+Remote     |     64  17.83 |     54  35.53 |      0   0.00 |     54 100.00 |
+           |---------------+---------------+---------------+---------------|
+Totals     |    359 100.00 |    152  42.34 |     98  27.30 |     54  15.04 |
+           `---------------------------------------------------------------'
+Finished Infostructure Manoj at Tue, 23 Jan 1996 12:13:05 
+
+Summary of Process Results:
+           .---------------------------------------------------------------.
+           |  References   |  Unique URLs  |  Local URLs   |  Remote URLs  |
+           | number   pct  | number   pct  | number   pct  | number   pct  |
+           |---------------+---------------+---------------+---------------|
+Traversed  |      0   0.00 |     20  13.07 |     20  20.20 |      0   0.00 |
+Tested     |    143  39.83 |    144  94.12 |     95  95.96 |     49  90.74 |
+Reused     |    206  57.38 |      1   0.65 |      1   1.01 |      0   0.00 |
+Avoided    |      0   0.00 |      0   0.00 |      0   0.00 |      0   0.00 |
+Untestable |     10   2.79 |      8   5.23 |      3   3.03 |      5   9.26 |
+           |---------------+---------------+---------------+---------------|
+Broken     |     58  16.16 |     32  20.92 |     16  16.16 |     16  29.63 |
+Redirected |      0   0.00 |      0   0.00 |      0   0.00 |      0   0.00 |
+Changed  7 |     35   9.75 |     37  24.18 |     30  30.30 |      7  12.96 |
+Expired  0 |      0   0.00 |      0   0.00 |      0   0.00 |      0   0.00 |
+           |---------------+---------------+---------------+---------------|
+Local      |    295  82.17 |     99  64.71 |     99 100.00 |      0   0.00 |
+Remote     |     64  17.83 |     54  35.29 |      0   0.00 |     54 100.00 |
+           |---------------+---------------+---------------+---------------|
+Totals     |    359 100.00 |    153  42.62 |     99  27.58 |     54  15.04 |
+           `---------------------------------------------------------------'
+MOMspider/1.00a finished at Tue, 23 Jan 1996 12:13:06 (23 Jan 1996 17:13:06 GMT)

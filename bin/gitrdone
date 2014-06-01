@@ -1,0 +1,43 @@
+#!/bin/bash
+output=~/tmp/runresults
+mark=$(date +%Y%m%d%H%M%S)
+if [ ! -d "$output" ]; then
+    mkdir "$output"
+fi
+if [ -z "$1" ]; then
+    echo "Need hostclass or file with list of hosts"
+    exit
+fi
+if [ -f "$1" ]; then
+    hosts=$(cat "$1")
+else
+    hosts=$(expand-hostclass -hosts-only -recurse "$1")
+fi
+
+if [ -z "$hosts" ]; then
+    echo "No hosts found in hostclass \"$1\""
+    exit
+fi
+
+mkdir "$output/$mark"
+for host in $hosts; do 
+    echo $host
+done
+shift
+echo "Command: $*"
+echo -n "Confirm [y/N]:"
+read confirm
+if [ "$confirm" == "y" ] || [ "$confirm" == "Y" ]; then
+    echo "Confirmed..."
+    echo -n "Password:"
+    read -s pass
+    echo
+    echo "command $*" > "$output/$mark/command"
+    for host in $hosts; do
+        echo $pass | ssh -A -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -o PreferredAuthentications=gssapi-with-mic $host "sudo -S $*"  > "$output/$mark/$host" 2>/dev/null &
+    done
+    echo "Output in $output/$mark"
+else
+    echo "Canceled"
+fi
+

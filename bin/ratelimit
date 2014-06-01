@@ -1,0 +1,28 @@
+# sh function
+# I use it thus:
+#        floodctl 22 30 5 SSH SSH_brute_force
+#	 floodctl 80 160 20 HTTP1 HTTP_flood
+#	 floodctl 80 2 10 HTTP2 HTTP_burst
+# - first number is TCP port
+# - second number is window length in seconds
+# - third is maximum number of new connections from this IP to accept within 
+#   the sliding window
+# - fourth is a unique label
+# - fifth is a logging tag
+
+floodctl() {
+	dport=$1
+	secs=$2
+	count=$3
+	name=$4
+	logtag=$5
+        /sbin/iptables -A INPUT -p tcp --dport $dport -m state --state NEW \
+                -m recent --rcheck --seconds $secs --hitcount $count --rttl \
+                --name $name -j LOG --log-prefix "$logtag "
+        /sbin/iptables -A INPUT -p tcp --dport $dport -m state --state NEW \
+                -m recent --rcheck --seconds $secs --hitcount $count --rttl \
+		--name $name -j DROP
+        /sbin/iptables -A INPUT -p tcp --dport $dport -m state --state NEW \
+                -m recent --set --name $name
+}
+

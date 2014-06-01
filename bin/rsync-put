@@ -1,0 +1,42 @@
+#! /bin/sh
+
+
+
+rsync "$@" -v -u -l -H -g -o -p -C -r -c 	--delete		\
+      --exclude .ssh 							\
+      --exclude Work 							\
+      --exclude var/tmp 						\
+      --exclude .ncftp/trace.\* 					\
+      --exclude var/spool/mail 						\
+      --exclude var/spool/agent						\
+      --exclude var/spool/news/kill/nntp\*				\
+      --exclude var/spool/news/cache/nntp\*				\
+      --exclude var/log  						\
+      --exclude .url/ 							\
+      --exclude lib/.sec 						\
+      --exclude .fvwm/FvwmButtons.hook					\
+      --exclude .kde				 			\
+      --exclude etc/crontab			 			\
+      --exclude .Xauthority			 			\
+      --exclude .latest-kernels			 			\
+      --exclude .ssh/				 			\
+      --exclude .xsession			 			\
+      --exclude .xchat				 			\
+      --exclude .xchat2				 			\
+      --exclude .galeon				 			\
+      --exclude .gconf                                                  \
+      --exclude .gconfd                                                 \
+      --exclude .Gabber                                                 \
+      --exclude .aumixrc		 			   \
+      --exclude .mozilla			 			\
+      --exclude .gkrellm2                                               \
+      --exclude .rnd                                                    \
+      --exclude .alsaplayer                                             \
+      --exclude .fvwm/                                                  \
+      --exclude .fvwm2rc                                                \
+      --exclude .ibam/                                                  \
+      --exclude lib/X11/xresources/                                     \
+      --exclude etc/mozilla/                                            \
+      --exclude .skipstone			 			\
+      --exclude etc/OpenOffice.org1.0.1                                 \
+      /home/srivasta/ glaurung:/home/srivasta/

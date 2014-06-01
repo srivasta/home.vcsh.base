@@ -1,0 +1,109 @@
+X-From-Line: debian-bugs-dist-request@lists.debian.org  Wed Feb 25 17:55:27 1998
+Received: from mail.datasync.com (srivasta@tiamat.datasync.com [206.96.246.252])
+	by tiamat.datasync.com (8.8.8/8.8.8/Debian/GNU) with ESMTP id RAA04841
+	for <srivasta@tiamat.datasync.com>; Wed, 25 Feb 1998 17:55:18 -0600
+Received: by osh5 for srivasta
+ (with Cubic Circle's cucipop (v1.21 1997/08/10) Wed Feb 25 17:55:13 1998)
+X-From_: debian-bugs-dist-request@lists.debian.org  Wed Feb 25 17:52:51 1998
+Received: from debian.novare.net (qmailr@debian.novare.net [205.229.104.5]) by osh5.datasync.com (8.8.7/Datasync) with SMTP id RAA29880 for <srivasta@datasync.com>; Wed, 25 Feb 1998 17:52:50 -0600
+Received: (qmail 17986 invoked by uid 38); 25 Feb 1998 23:51:22 -0000
+X-Envelope-Sender: discard-all@chiark.greenend.org.uk
+Received: (qmail 17779 invoked from network); 25 Feb 1998 23:51:15 -0000
+Received: from debian.novare.net (HELO submailer.bugs.debian.org) (iwj@205.229.104.5)
+  by debian.novare.net with SMTP; 25 Feb 1998 23:51:15 -0000
+Received: by submailer.bugs.debian.org id m0y7q5Z-001sAQC
+	(Debian /\oo/\ Smail3.1.29.1 #29.35); Wed, 25 Feb 98 17:18 CST
+Subject: Bug#18533: screen: emacs don' work with screen
+Reply-To: Andrea Arcangeli <arcangeli@mbox.queen.it>, 18533@bugs.debian.org
+Resent-From: Andrea Arcangeli <arcangeli@mbox.queen.it>
+Resent-To: debian-bugs-dist@lists.debian.org
+Resent-CC: Juan Cespedes <cespedes@debian.org>
+Resent-Date: Wed, 25 Feb 1998 23:18:06 GMT
+Resent-Message-ID: <handler.18533.B18533.8884478013225@bugs.debian.org>
+X-Debian-PR-Message: report 18533
+X-Debian-PR-Package: screen
+X-Loop: owner@bugs.debian.org
+Received: via spool by 18533-bugs@bugs.debian.org id=B18533.8884478013225
+          (code B ref 18533); Wed, 25 Feb 1998 23:18:06 GMT
+Date: Thu, 26 Feb 1998 00:02:26 +0100 (CET)
+From: Andrea Arcangeli <arcangeli@mbox.queen.it>
+X-Sender: andrea@arca.arca.it
+To: Juan Cespedes <cespedes@debian.org>
+cc: 18533@bugs.debian.org
+In-Reply-To: <19980225001311.18000@gizmo.lander.es>
+Message-ID: <Pine.LNX.3.96.980225235220.1655A-100000@arca.arca.it>
+X-Public-Key-URL: http://www-linux.deis.unibo.it/~mirror/aa.asc
+MIME-Version: 1.0
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+X-Mailing-List: <debian-bugs-dist@lists.debian.org> archive/latest/17009
+X-Loop: debian-bugs-dist@lists.debian.org
+Precedence: list
+Resent-Sender: debian-bugs-dist-request@lists.debian.org
+X-Agent-list: debian-list
+X-Agent-list: debian-bugs
+X-Filter: mailagent [version 3.0 PL58] for srivasta@tiamat.datasync.com
+Lines: 62
+Xref: tiamat.datasync.com debian-bugs:6019
+
+On Wed, 25 Feb 1998, Juan Cespedes wrote:
+
+>	BTW: Why did you want to have `term linux' at all?
+
+I was frustrated in order to make a "standard" setup were preserving the
+same keys function under Console and under X. The only way I was able to
+do it was to remove /etc/terminfo/l/xterm and make a symlink to the linux
+terminfo file. This worked fine and now pine, vi, emacs -nw, readline and
+all other software run with the same keys functions in console as under
+xterm. The only problem remains with ncurses that is displayed wrong under
+xterm (because I use the linux terminfo).
+
+I added to my /etc/X11/Xresources:
+
+*VT100.Translations: #override <Key>BackSpace: string(0x7F)\n\
+	<Key>Delete:        string(0x1b) string("[3~")\n\
+	<Key>Home:          string(0x1b) string("[1~")\n\
+	<Key>End:           string(0x1b) string("[4~")
+
+Added to my /etc/inputrc:
+
+"\e[1~": beginning-of-line
+"\e[3~": delete-char
+"\e[4~": end-of-line
+"\e[5~":beginning-of-history
+"\e[6~":end-of-history
+
+my ~/.emacs:
+
+; keybinding
+(global-set-key [delete] 'delete-char)
+(global-set-key [home] 'beginning-of-line)
+(global-set-key [end] 'end-of-line)
+(global-set-key [C-home] 'beginning-of-buffer)
+(global-set-key [C-end] 'end-of-buffer)
+(global-set-key [insertchar] 'overwrite-mode)
+(global-set-key [f11] 'beginning-of-buffer)
+(global-set-key [f12] 'end-of-buffer)
+
+Added to my /etc/X11/Xmodmap:
+
+keycode 22 = BackSpace
+keycode 107 = Delete
+
+And finally the only way to make all software working in the same manner:
+
+andrea@arca:/etc/terminfo/x$ ls -l
+total 2
+lrwxrwxrwx   1 root     root           10 Feb 25 21:26 xterm -> ../l/linux
+-rw-r--r--   1 root     root         1806 Feb  1 23:07 xterm.orig
+
+So now I' d like to use the term linux wherever I work in order to
+preserve my key functions even if under xterm ncurses is completly wrong.
+If you have a simpler way to do it I sure will agree with you. 
+
+Try to use pine and vi in xterm and Console with Home End, Canc and
+Backspace working.
+
+Andrea[s] Arcangeli
+
+
+

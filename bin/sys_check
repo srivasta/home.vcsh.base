@@ -1,0 +1,3814 @@
+#!/bin/sh
+# *****************************************************************
+# *                                                               *
+# *    Copyright Compaq Computer Corporation, 2000                *
+# *                                                               *
+# *   The software contained on this media  is  proprietary  to   *
+# *   and  embodies  the  confidential  technology  of  Compaq    *
+# *   Computer Corporation.  Possession, use,  duplication  or    *
+# *   dissemination of the software and media is authorized only  *
+# *   pursuant to a valid written license from Compaq Computer    *
+# *   Corporation.                                                *
+# *                                                               *
+# *   RESTRICTED RIGHTS LEGEND   Use, duplication, or disclosure  *
+# *   by the U.S. Government is subject to restrictions  as  set  *
+# *   forth in Subparagraph (c)(1)(ii)  of  DFARS  252.227-7013,  *
+# *   or  in  FAR 52.227-19, as applicable.                       *
+# *                                                               *
+# *****************************************************************
+#          @(#)sys_check.sh     001.0   (Red Hat Linux ) 03/20/2000
+
+
+SCRIPT_VERSION="001.0 RedHat Linux"
+
+
+
+
+# -------------------------------------
+# Functions 
+
+#
+# Common sys_check functions
+#
+#
+FUNCTIONS_IS_LOADED=YES
+# export FUNCTIONS_IS_LOADED
+
+
+
+# Output debug string
+ODS() {
+  if [ "$DO_DEBUG" = "YES" ]; then
+    echo "ods=> $@" > /dev/tty
+  fi
+}
+
+timestamp_here() 
+{
+echo -n ".TIMESTAMP "
+date
+}
+
+
+module_begin() { 
+ODS "# Module '$1'"
+echo 
+echo -n ".MODULE "
+echo "$1"
+timestamp_here
+
+echo -e -n "\n<`date`> \"\033[35m$1\033[m\" " > /dev/tty
+
+}
+
+module_end() {
+ODS
+echo 
+timestamp_here
+echo -n ".ENDMODULE"
+echo
+
+}
+
+section_begin() {
+ODS "#   Section '$1'"
+echo 
+echo -n ".SECTION " 1>&2
+echo "$1" 1>&2
+sleep 1
+timestamp_here
+}
+
+section_mark(){
+echo 
+echo -n ".MARK"
+echo
+}
+
+section_end(){
+echo 
+timestamp_here
+echo -n ".ENDSECTION" 1>&2
+echo 1>&2
+sleep 1
+}
+
+section_link(){
+echo ".LINK_S $1"
+echo "$2"
+echo ".LINK_E "
+}
+
+generateExecSection()
+{
+    lExecCheckFile="$RUN_PWD/$tmpdir/exec.result"
+
+    echo -e "`module_begin \"exec\"; section_begin \"Utilities\" 2>&1;`\n   \n`cat $lExecCheckFile``section_end 2>&1; module_end`" > $lExecCheckFile
+
+}
+
+logExec()
+{
+
+    lExecCheckFile="$RUN_PWD/$tmpdir/exec.result"
+
+    if [ -f $lExecCheckFile ]; then
+    {
+        lTest=`cat $lExecCheckFile | grep $1 | wc --line | awk '{ print $1;}'` 
+
+        if [ x"$lTest" = x"0" ]; then
+        {
+            echo $1 >> $lExecCheckFile
+        }; fi
+
+    }; 
+    else
+    {
+        echo $1 >> $lExecCheckFile
+    }; fi
+
+
+}
+
+execfile(){
+
+ if [ -x $1 ] ; then 
+ {
+    echo ".CMD $@"
+    echo 
+    $@
+
+#logExec "$1"
+ } ;
+ else 
+ {
+   lCmd=`echo $1 | awk 'BEGIN { FS="/" } ; {print $NF;}'`
+
+   lCmd=`whereis -b $lCmd | awk '{ for (i=2; i<=NF; i++) { if (length($i)>0) { if (substr($i, length($i)-length($1)+2)==substr($1,1,length($1)-1)) printf "%s", $i; exit; } } }'`; 
+
+    largs=
+    lflg=
+
+ 
+    for li in $@ ; do 
+    { 
+        if [ -n "$lflg" ] ; then 
+        {   
+            largs="$largs $li" 
+        } ; fi
+
+        lflg="YES"
+    }; done
+
+
+    if [ x"$lCmd" != x"" ] && [ -x $lCmd ] ; then 
+    {
+        echo ".CMD $lCmd $largs"
+        echo
+
+        $lCmd $largs
+
+#logExec "$lCmd"
+    } 
+    else 
+    {
+        if [ x"$lCmd" != x"" ] ; then
+        {
+            echo "Unable to execute $lCmd $largs" 1>&2
+        }
+        else
+        {
+            echo "Unable to execute $@" 1>&2
+
+        } ; fi
+    };
+    fi
+    
+ };
+ fi
+}
+
+catfile()
+{
+    echo ".CMD cat $1"
+    echo
+    if [ -f $1 ] ; then 
+    {   
+        if [ -n "$1" ] ; then
+        {
+            cat $1 ;
+
+        }; fi
+    }
+    else
+    {
+        echo "$1 is not available" 1>&2;
+
+    } ; fi
+}
+
+s_execfile()
+{
+    if [ x"$DO_SECALL" = x"YES" ] ; then
+    {
+        execfile $@
+    }
+    else
+    {
+        echo ".CMD $@"
+        echo 
+        echo "The output is not displayed because of security reasons."
+        echo "Use the sys_check -all option to display this file."  
+    } ; fi
+}
+
+# same as catfile + security check
+s_catfile()
+{
+    if [ x"$DO_SECALL" = x"YES" ] ; then
+    {
+    catfile $1
+    }
+    else
+    {
+    echo "The $1 is not displayed because of security reasons."
+        echo "Use the sys_check -all option to display this file."  
+    
+    } ; fi
+}
+
+# same as catfile for text (printable) files
+cattext()
+{
+  T=`file -b $1 | grep -E "script|text"`
+  if [ -n "$T" ]; then 
+  {
+    catfile $1
+  } ; else {
+    echo "$1 is a binary file" 1>&2
+  } ;
+  fi
+}
+
+lsfiles()
+{
+  ls -lL $@ | grep '^-' | awk '{print $9}'
+}
+
+strip_httpd_def()
+{
+    _D=`grep "^ -D $1" | sed 's/^.*="// ; s/"$//'`
+    if [ -z "`echo $_D | grep '^/'`" -a -n "$2" ]; then
+      _D="$2/$_D"
+    fi
+
+    echo $_D
+}
+
+usage(){
+cat << EOF
+[sys_check] - Operating System Collection, Analysis and Reporting
+
+SYNOPSIS
+sys_check [options]
+
+DESCRIPTION
+  It produces system information for subsequent analising.
+  sys_check asks for temporary directory which is required to create tar file
+  with results and html (if selected).
+     
+  -com=[checks] 
+            Selects checks to be executed
+
+  -escalate 
+            Produces escalate.tgz and sys_check.html
+  -all
+            All information (including security information)
+
+  -output filename
+            Set filename for HTML output (default sys_check.html)
+
+  -ghtml
+            Generate HTML file from *.results files
+
+  -frame
+            Output frames format html file (creates files)
+
+  -advframe
+            Output frames format html file (creates one file) for Netscape & IE
+
+  -version
+            Show sys_check's version
+
+  -help
+            Shows this text 
+
+EOF
+}
+
+killsig() {
+
+KILLING=YES
+
+}
+KILLING=
+trap killsig 1 2 3 13 15
+ 
+working() {
+if [ "$DO_DEBUG" != "YES" ]; then
+  while [ -f $tmpdir/sys_check.running ] ; do {
+
+#      echo -e -n "\n`date` "
+
+#      for ll in `echo ". . . . . . . . . . . . . . . . . . . ."` ; do
+#      {
+
+          if [ -f $tmpdir/sys_check.running ] ; then
+          {
+              sleep 5
+              echo -n -e "\033[35m.\033[m" 
+
+          } ; fi
+
+
+#      }; done
+
+
+  } ; done
+fi
+}
+
+#-------------------------
+
+printsref(){
+L_NUMS=`cat $1 | sed -n "/\.SECTION/,/\.ENDSECTION/{
+    /\.SECTION/=
+    /\.ENDSECTION/=
+    } "`
+L_SBEG=YES
+for i in $L_NUMS ; do {
+  if [ x"$L_SBEG" = x"YES" ] ; then {
+     L_BLINE=$i
+     L_SBEG=NO
+  } ; else {
+    L_ELINE=$i
+    L_SBEG=YES
+    cat  $1 | sed -n "$L_BLINE, $L_ELINE{
+    /\.SECTION/{
+        s/\.SECTION/<A HREF=#${SECTION}_${L_BLINE}>[/g
+    a\\
+]</A>
+    p
+    }
+    }"
+  } ; fi
+} ; done 
+}
+
+
+printsections(){
+L_NUMS=`cat $1 | sed -n "/\.SECTION/,/\.ENDSECTION/{
+    /\.SECTION/=
+    /\.ENDSECTION/=
+    } "`
+L_SBEG=YES
+
+for i in $L_NUMS ; do 
+{
+  if [ x"$L_SBEG" = x"YES" ] ; then 
+  {
+     L_BLINE=$i
+     L_SBEG=NO
+  } 
+  else 
+  {
+    L_ELINE=$i
+    L_SBEG=YES
+    cat  $1 | sed -n "$L_BLINE, $L_ELINE{
+    s/</\&lt;/g
+    s/>/\&gt;/g
+    /\.SECTION/{
+      s/\.SECTION/<TABLE border=3 width="100%" ><TR><TD><H4><A NAME=${SECTION}_${L_BLINE}>/g
+    a\\
+    </A></H4><A HREF=#$SECTION>Up</A></TABLE><PRE>
+      }
+    /\.ENDSECTION/{
+      s/\.ENDSECTION/<\/PRE><BR>/g
+      }
+    /\.MARK/{
+      s/\.MARK/<HR>/g
+      }
+    /\.CMD/{
+      s/\.CMD/<B><I>/g
+      a\\
+      </I></B>
+      }
+    /\.LINK_E /{
+      s/\.LINK_E /<HR>/g
+      }
+    /\.LINK_S /{
+    s/\.LINK_S /<A href=#/g
+a\\
+>
+      }
+    /^\.TIMESTAMP/{
+      s/\.TIMESTAMP/<!-- .TIMESTEMP/g
+    a\\
+-->
+      }
+    p
+    }"
+
+  } ; fi
+} ; done
+}
+
+printCPUSInfo()
+{
+      echo -n "Number of CPUs: "
+
+    case $CPU_TYPE in 
+    INTEL) 
+
+        cat /proc/cpuinfo | grep -E "processor" | wc --line | awk '{printf "%s", $1;}'
+        cat /proc/cpuinfo |
+                awk '{
+                                if ($1=="processor" && $NF!="0") exit; else
+                                if ($1=="vendor_id") printf "  Vendor : %s", substr($0, match($0, ":") + 1); else
+                                if ($1=="model" && $2=="name") printf "  Model : %s", substr($0, match($0, ":") + 1); else
+                                if ($1=="cpu" && $2=="MHz") printf "  Speed : %s MHz\n", substr($0, match($0, ":") + 1);
+
+                            }'
+
+
+    ;;
+    ALPHA)
+    
+        cat /proc/cpuinfo | grep -E "^cpus detected" | awk '{ if ($1=="cpus" && $2=="detected") printf "%s", $NF; else printf "1";}'
+        cat /proc/cpuinfo | 
+                awk '{ 
+                                if ($1=="cpu" && $2=="model") printf  "  Model: %s", $NF; else
+                                if ($1=="system" && $2=="type") printf  "  Type: %s", $NF; else
+                                if ($1=="cycle" && $2=="frequency") { if (NF==5) PARAM=$NF; else PARAM=$5; printf  "  Speed: %s,%s MHz\n", substr(PARAM, 1, length(PARAM)-6), substr(PARAM,length(PARAM)-5);}
+                         }'
+
+
+    ;;
+    *)
+        echo "0"
+    ;;
+    esac
+
+
+}
+
+checkUtils()
+{
+
+lUtils="
+/usr/bin/vmstat
+/sbin/swapon
+/usr/bin/ipcs
+/usr/bin/top
+/usr/bin/uptime
+/bin/ps
+/bin/ls
+/usr/sbin/lpc
+/sbin/fdisk
+/sbin/hdparm
+/bin/mount
+/bin/df
+/usr/sbin/quotastats
+/usr/bin/quota
+/usr/sbin/repquota
+/sbin/dumpe2fs
+/usr/sbin/nfsstat
+/etc/rc.d/init.d/nfs
+/bin/netstat
+/sbin/ifconfig
+/sbin/route
+/usr/sbin/rpcinfo"
+
+lUtils=`echo $lUtils`
+
+    echo "Checking sys_check's utils ..."
+    sleep 2
+
+    for lOU in $lUtils ; do
+    {
+        echo -n "Checking for "
+
+        if [ -f $lOU ] ; then
+        {
+            echo -e "$lOU... \033[32mok\033[m"
+        }
+        else
+        {
+            echo -e "$lOU... \033[31mNO\033[m"
+
+        }; fi
+
+
+    } ; done
+
+    echo
+}
+
+printScriptVersion()
+{
+    echo -n "sys_check Script Version: $SCRIPT_VERSION"
+}
+res2html() {
+#
+# Purpose: to convert *.check output to html
+#
+#
+
+if [ x"$tarlist" = x"" ] ; then { 
+   echo "Usage: res2html is part of sys_check project. Use sys_check main part insted"
+   exit 1
+} ; fi
+
+
+if [ x"$DO_ADVFRAMES" = x"YES" ] ; then
+{
+
+cat << 'EOF' | uudecode
+begin 644 sys_check.gif
+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
+)^<:,-0$!```[
+`
+end
+EOF
+
+}; fi
+
+
+startFunction()
+{
+    if [ x"$DO_LINE_HTML" != x"YES" ] ; then { 
+        echo "function $@(p)"
+        echo "{"
+        echo "p.close();"
+    } ; fi
+}
+
+endFunction()
+{
+    if [ x"$DO_LINE_HTML" != x"YES" ] ; then { 
+        echo
+        echo "p.write(\"<P>\");}"
+    } ; fi
+}
+
+scriptStart()
+{
+    if [ x"$DO_LINE_HTML" != x"YES" ] ; then { 
+        echo "<script>"
+    } ; fi 
+}
+
+scriptEnd()
+{
+    if [ x"$DO_LINE_HTML" != x"YES" ] ; then { 
+        echo "</script>"
+    } ; fi
+
+}
+
+dwrite()
+{
+    if [ x"$DO_LINE_HTML" != x"YES" ] ; then { 
+        tmp=`echo $@ | sed 's/"/\\\"/g'`
+
+        echo "document.write(\"$tmp\");"
+    }
+    else
+    {
+        echo "$@"
+
+    } ; fi
+    
+}
+
+dwrite2()
+{
+    if [ x"$DO_LINE_HTML" != x"YES" ] ; then { 
+        tmp=`echo $@ | sed 's/"/\\\"/g'`
+
+        echo "p.write(\"$tmp\");"
+    }
+    else
+    {
+        echo "$@"
+
+    } ; fi
+    
+}
+
+#---- ---------------------
+
+printsref4adv(){
+L_NUMS=`cat $1 | sed -n "/\.SECTION/,/\.ENDSECTION/{
+    /\.SECTION/=
+    /\.ENDSECTION/=
+    } "`
+L_SBEG=YES
+for i in $L_NUMS ; do {
+  if [ x"$L_SBEG" = x"YES" ] ; then {
+     L_BLINE=$i
+     L_SBEG=NO
+  } ; else {
+    L_ELINE=$i
+    L_SBEG=YES
+    cat  $1 | sed -n "$L_BLINE, $L_ELINE{
+    s/\"/\&#34;/g
+    s/\\\\/\&#92;/g
+    /\.SECTION/{
+        s/\.SECTION/<A HREF=javascript:parent.frames[3].document.close();parent.${SECTION}_${L_BLINE}(parent.frames[3].document); >[/g
+    a\\
+]</A>
+    p
+    }
+    }"
+  } ; fi
+} ; done 
+}
+
+printsref(){
+L_NUMS=`cat $1 | sed -n "/\.SECTION/,/\.ENDSECTION/{
+    /\.SECTION/=
+    /\.ENDSECTION/=
+    } "`
+L_SBEG=YES
+for i in $L_NUMS ; do {
+  if [ x"$L_SBEG" = x"YES" ] ; then {
+     L_BLINE=$i
+     L_SBEG=NO
+  } ; else {
+    L_ELINE=$i
+    L_SBEG=YES
+    cat  $1 | sed -n "$L_BLINE, $L_ELINE{
+    s/\"/\&#34;/g
+    s/\\\\/\&#92;/g
+    /\.SECTION/{
+        s/\.SECTION/<A HREF=#${SECTION}_${L_BLINE} >[/g
+    a\\
+]</A>
+    p
+    }
+    }"
+  } ; fi
+} ; done 
+}
+
+
+printsref4sub()
+{
+    echo "function $2(p)"
+    echo "{"
+    echo "p.close();"
+
+L_NUMS=`cat $1 | sed -n "/\.SECTION/,/\.ENDSECTION/{
+    /\.SECTION/=
+    /\.ENDSECTION/=
+    } "`
+L_SBEG=YES
+for i in $L_NUMS ; do {
+  if [ x"$L_SBEG" = x"YES" ] ; then {
+     L_BLINE=$i
+     L_SBEG=NO
+  } ; else {
+    L_ELINE=$i
+    L_SBEG=YES
+    cat  $1 | sed -n "$L_BLINE, $L_ELINE{
+    s/\"/\&#34;/g
+    s/\\\\/\&#92;/g
+    /\.SECTION/{
+        s/\.SECTION/${SECTION}_${L_BLINE}(p); \/\/ /g
+    p
+    }
+    }"
+  } ; fi
+} ; done 
+
+    echo "}"
+}
+
+printsections2(){
+L_NUMS=`cat $1 | sed -n "/\.SECTION/,/\.ENDSECTION/{
+    /\.SECTION/=
+    /\.ENDSECTION/=
+    } "`
+L_SBEG=YES
+
+LL_UPLINK=
+LL_LINK="<A href=#"
+
+if [ x"$DO_LINE_HTML" = x"YES" ] ; then 
+{
+    LL_UPLINK="Up"
+}; fi
+
+if [ x"$DO_ADVFRAMES" = x"YES" ] ; then
+{
+    LL_LINK="<A SLC SYS_LINK_CHECK "
+
+} ; fi 
+
+for i in $L_NUMS ; do 
+{
+  if [ x"$L_SBEG" = x"YES" ] ; then 
+  {
+     L_BLINE=$i
+     L_SBEG=NO
+  } 
+  else 
+  {
+    L_ELINE=$i
+    L_SBEG=YES
+
+
+    cat  $1 | sed -n "$L_BLINE, $L_ELINE{
+    s/</\&lt;/g
+    s/>/\&gt;/g
+    s/\"/\&#34;/g
+    s/\\\\/\&#92;/g
+    /\.SECTION/{
+      s/\.SECTION/<TABLE border=3 width="100%" ><TR><TD><H4><A NAME=${SECTION}_${L_BLINE} >/g
+    a\\
+    </A></H4><A HREF=#$SECTION>$LL_UPLINK</A></TABLE><PRE>
+      }
+    /\.ENDSECTION/{
+      s/\.ENDSECTION/<\/PRE><BR>/g
+      }
+    /\.MARK/{
+      s/\.MARK/<HR>/g
+      }
+    /\.CMD/{
+      s/\.CMD/<B><I>/g
+      a\\
+      </I></B>
+      }
+    /\.LINK_E /{
+      s/\.LINK_E /<HR>/g
+      }
+    /\.LINK_S /{
+    s/\.LINK_S /$LL_LINK/g
+a\\
+>
+      }
+    /^\.TIMESTAMP/{
+      s/\.TIMESTAMP/<!-- .TIMESTEMP/g
+    a\\
+-->
+      }
+    p
+    }"
+
+  } ; fi
+} ; done
+}
+
+
+dprintsections()
+{
+
+    if [ x"$DO_LINE_HTML" != x"YES" ] ; then 
+{ 
+
+
+    printsections2 $@  | tr -d "\015" | tr "\00" " " | 
+    awk '
+        {
+            if ($2=="SLC") 
+            { 
+                if ($3=="SYS_LINK_CHECK")
+                {
+                    printf "<A HREF=\\\"javascript:parent.%s(parent.frames[2].document);parent.s_%s(parent.frames[3].document);\\\" ", $4, $4;
+                }
+                else
+                {
+                    printf "%s\n", $0; 
+                };
+            } 
+            else 
+            { 
+                printf "%s\n", $0; 
+            };
+        }' | 
+    awk '
+        BEGIN{fIndex=0; ii=0; fTable=1; };
+        { 
+            if ($1=="<TABLE") 
+                { 
+                    if (fTable==0) 
+                    { 
+                        print "\");\n}\n"; 
+                    };
+                    
+                    fTable=0;
+                    ii=length($0);
+ 
+                    printf "function %s(p)\n{\np.write(\"%s\\n", substr($5, 6, 40), $0;
+                }
+                else
+                {
+                    
+                
+                    if (ii>1024) 
+                    {
+                        ii=0; printf "\\n\");\np.write(\"";
+                    };
+
+                    printf "%s\\n", $0;
+
+                    ii=ii+length($0);
+                }; 
+                    
+        }'
+
+    echo "\");"
+    echo "}"
+
+}
+else
+{
+    printsections2 $@  | tr -d "\015" | tr "\00" " "
+    
+} ; fi
+
+}
+
+dprintsref()
+{
+    if [ x"$DO_LINE_HTML" != x"YES" ] ; then 
+    { 
+        echo -e -n "p.write(\"<BODY link=#0000FF vlink=#0000FF alink=#800080 >"
+        printsref4adv $@ | awk '{printf "%s\\n", $0;}'
+        echo -e "\");"
+    }
+    else
+    {
+        printsref $@
+    } ; fi
+}
+
+
+lineHeader()
+{
+    if [ x"$DO_LINE_HTML" = x"YES" ] ; then { 
+
+    echo "<HTML><HEAD>"
+    echo '  <META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=iso-8859-1">'
+    echo -n '  <META NAME="GENERATOR" CONTENT="'
+    printScriptVersion
+    echo ' [COMPAQ]">'
+
+    echo '<TITLE>'
+
+    echo `cat sys_check.info | grep "sys_check for"`
+
+    echo '</TITLE></HEAD>'
+    echo '<BODY BGCOLOR="#FFFFFF" TEXT="#000000">'
+
+    } ; fi
+}
+
+
+lineHeader
+
+#
+# Building table of contents
+#
+
+L_LIST="$tarlist"
+
+scriptStart
+
+if [ x"$DO_ADVFRAMES" = x"YES" ] ; then
+{
+
+startFunction "fLogo"
+
+    dwrite2 "<CENTER>"
+    dwrite2 "<A href=\"javascript:parent.fCaption(parent.frames[2].document); parent.fCaption(parent.frames[3].document);\" >"
+    dwrite2 "<IMG SRC=\"sys_check.gif\" border=0>"
+    dwrite2 "</A>"
+    dwrite2 "</CENTER>"
+
+endFunction
+
+} ; fi
+startFunction "fCaption"
+
+dwrite2 "<CENTER>"
+
+dwrite2 "<H4><B>"
+lCatInfo=`cat sys_check.info | awk 'BEGIN {flag=1;}; {if ($1==".TIMESTAMP") { if (ts==0) { ts=1; print "Start time:", substr($0, length($1)+1), "<BR>"; } else { print "End time:", substr($0, length($1)+1);}; } else { if ($1==".MARK") { if (flag==1) { flag=2; print "</B></H4><HR><H1>";} else print "</H1><HR><H4><B>"; } else printf "%s <BR>", $0;};}'`
+dwrite2 $lCatInfo
+dwrite2 "</B></H4>"
+
+dwrite2 "</CENTER>"
+
+endFunction
+
+
+startFunction "fContents"
+
+if [ x"$DO_LINE_HTML" = x"YES" ] ; then 
+{ 
+    echo "<BODY link=#0000FF vlink=#0000FF alink=#800080 ><HR><CENTER><H2><A NAME="_contents">Table of Contents</A></H2>"
+} 
+else
+{
+#    dwrite2 "<CENTER><H2><A NAME="_contents">Table of Contents</A></H2></CENTER>"
+
+    dwrite2 "<BODY link=#0000FF vlink=#0000FF alink=#800080 >"
+#<BR><CENTER><H1><A href=\"javascript:parent.fCaption(parent.frames[2].document); parent.fCaption(parent.frames[3].document);\" >sys_check</A></H1></CENTER><BR>"
+
+} ; fi
+
+SECTION_F_LIST=
+
+# Sorting !?
+
+L_NEXTLINE=YES
+dwrite2 "<TABLE border=1>"
+for i in $L_LIST ; do {
+   if [ x"$L_NEXTLINE" = x"YES" ] ; then {
+      dwrite2 "<TR>"
+   } ; fi
+
+   L_INFO=`cat $i | sed -n "/^\.MODULE/{
+      s/^\.MODULE//g 
+      p
+      }"`
+   j=`echo $i | sed "s/.results//g"`
+   dwrite2 "<TD>"
+
+if [ x"$DO_LINE_HTML" = x"YES" ] ; then 
+{ 
+     dwrite "<A HREF=\"#$j\">$L_INFO</A>"
+}
+else
+{
+   dwrite2 "<A href=\"javascript:parent.$j(parent.frames[2].document);parent.s_$j(parent.frames[3].document);\" >$L_INFO</A>"
+
+} ; fi
+
+   dwrite2 "</TD>"
+   if [ x"$L_NEXTLINE" = x"YES" ] ; then {
+      L_NEXTLINE=NO
+   } else {
+      dwrite2 "</TR>"
+      L_NEXTLINE=YES
+   } ; fi
+} ; done
+
+
+dwrite2 "</TABLE>"
+
+if [ x"$DO_LINE_HTML" = x"YES" ] ; then 
+{ 
+    dwrite2 "</CENTER>"
+} ; fi
+
+endFunction
+
+
+
+
+L_SECTION=
+R_SECTION=
+LL_LIST=$L_LIST
+
+for k in $L_LIST ; do {
+if [ x"$DO_LINE_HTML" = x"YES" ] ; then 
+{ 
+   echo "<HR>"
+} ; fi
+   L_INFO=`cat $k | sed -n "/^\.MODULE/{
+      s/^\.MODULE//g 
+      p
+      }"`
+
+   SECTION=`echo $k | sed "s/.results//g"`
+
+   startFunction "$SECTION"
+
+   LL_LIST=`echo $LL_LIST | awk '{printf "%s", substr($0, length($1)+1);}'`
+   R_SECTION=`echo $LL_LIST | awk '{printf "%s", $1;}' | sed "s/.results//g"`
+
+   if [ x"$L_SECTION" = x"" ] ; then
+   {
+       L_SECTION=`echo $L_LIST | awk '{ printf "%s", $NF;}' | sed "s/.results//g"`
+    
+   } ; fi
+
+    if [ x"$DO_LINE_HTML" = x"YES" ] ; then 
+    { 
+        dwrite2 "<H3><A NAME=\"$SECTION\">$L_INFO</A></H3><BR>"
+        dwrite2 "<B><A HREF=\"#$L_SECTION\">&lt;=</A></B>"
+        dwrite2 "<B><A HREF=#_contents>[TOC]</A></B>"
+    }
+    else
+    {
+        dwrite2 "<CENTER><H2><A HREF=\"javascript:parent.s_$SECTION(parent.frames[3].document);\">$L_INFO</A></H2></CENTER>"
+
+    } ; fi
+
+
+   if [ x"$R_SECTION" = x"" ] ; then
+   {
+       R_SECTION=`echo $L_LIST | awk '{ printf "%s", $1;}' | sed "s/.results//g"`
+    
+   } ; fi
+
+   if [ x"$DO_LINE_HTML" = x"YES" ] ; then 
+   {
+       dwrite2 "<B><A HREF=\"#$R_SECTION\">=&gt;</A></B>"
+
+   } ; fi
+
+   L_SECTION=$SECTION
+
+   dprintsref $k
+
+   endFunction
+
+   if [ x"$DO_LINE_HTML" != x"YES" ] ; then 
+   { 
+        printsref4sub $k s_$SECTION
+
+   } ; fi
+
+   dprintsections $k
+
+#   rm -f $k
+
+
+} ; done
+
+scriptEnd
+
+if [ x"$DO_LINE_HTML" = x"YES" ] ; then 
+{ 
+    echo "</BODY></HTML>"
+}
+else
+{
+
+echo "<FRAMESET cols=\"300,*\" onload=\"fLogo(frames[0].document);fContents(frames[1].document);fCaption(frames[2].document);fCaption(frames[3].document)\">"
+echo "<FRAMESET rows=\"190,*\" border=0 >"
+echo "<FRAME name=fleft SRC=\"about:blank\" scrolling=\"no\" border=0>"
+echo "<FRAME name=fleft2 SRC=\"about:blank\" scrolling=\"auto\" border=0>"
+echo "</frameset>"
+
+echo "<FRAMESET rows=\"150,*\">"
+echo "<FRAME name=ftop SRC=\"about:blank\" scrolling=\"auto\" border=4>"
+
+echo "<FRAME name=fmain SRC=\"about:blank\" scrolling=\"auto\" border=4>"
+echo "</frameset>"
+echo "</frameset>"
+
+}; fi
+
+
+printTable()
+{
+
+    echo '<TABLE CELLPADDING=0 CELLSPACING=0><TR VALIGN=Top>'
+    echo '<TD NOWRAP><FONT SIZE=2 FACE="Helvetica, Geneva, Arial, Swiss, sans-serif">'
+
+    echo "<A TARGET=\"task_window\" HREF=\"$HTML_FILE_NAME#$2\">"
+    echo "<STRONG>$1</STRONG></A></FONT></TD></TR></TABLE>"
+
+}
+
+if [ x"$DO_FRAMES" = x"YES" ] ; then
+{
+    echo '<HTML><HEAD><TITLE>' > $FRAME_FILE_NAME
+    echo `cat sys_check.info | grep "sys_check for"` >> $FRAME_FILE_NAME
+    echo '</TITLE></HEAD>' >> $FRAME_FILE_NAME
+    echo '<FRAMESET COLS="30%,70%">' >> $FRAME_FILE_NAME
+    echo "<FRAME SRC=\"$TOC_FILE_NAME\">" >> $FRAME_FILE_NAME
+    echo "<FRAME SRC=\"$HTML_FILE_NAME\" NAME=\"task_window\" >" >> $FRAME_FILE_NAME
+    echo '</FRAMESET></HTML>' >> $FRAME_FILE_NAME
+
+    
+
+
+    echo '<HTML><HEAD><TITLE>Table of Contents</TITLE></HEAD>' > $TOC_FILE_NAME
+    echo '<BODY BGCOLOR="#FFFFFF" TEXT="#000000">' >> $TOC_FILE_NAME
+    echo '<H3><CENTER>Table of Contents</CENTER></H3>' >> $TOC_FILE_NAME
+
+    echo '<P><STRONG>General System Information</STRONG>' >> $TOC_FILE_NAME
+
+    printTable "System Version" "uname" >> $TOC_FILE_NAME
+    printTable "System Boot Message" "uerf" >> $TOC_FILE_NAME
+    printTable "Packages" "patch" >> $TOC_FILE_NAME
+    printTable "System Configuration Files" "config" >> $TOC_FILE_NAME
+    printTable "Modules and Kernel Information" "sysconfig" >> $TOC_FILE_NAME
+    printTable "Startup Parameters" "rcconfig" >> $TOC_FILE_NAME
+    printTable "System Startup Procedures" "startup" >> $TOC_FILE_NAME
+    printTable "Virtual Memory and Swap" "vm" >> $TOC_FILE_NAME
+    printTable "CPUs and Processes" "process" >> $TOC_FILE_NAME
+    printTable "Device Special Files" "dev" >> $TOC_FILE_NAME
+    printTable "Printers" "print" >> $TOC_FILE_NAME
+    printTable "Crontab and At" "crontab" >> $TOC_FILE_NAME
+    printTable 'X11/Windows Manager' "x11" >> $TOC_FILE_NAME
+    printTable "Users and Process Accounting" "acct" >> $TOC_FILE_NAME
+    printTable "Adhoc information from system administrator" "adhoc" >> $TOC_FILE_NAME
+
+
+    echo '<P><STRONG>Events and Error Logs</STRONG>' >> $TOC_FILE_NAME
+
+    printTable "System Logs" "syslog" >> $TOC_FILE_NAME
+
+
+    echo '<P><STRONG>Security Information</STRONG>' >> $TOC_FILE_NAME
+
+    printTable "Security Information (Users and Groups)" "security" >> $TOC_FILE_NAME
+
+    echo '<P><STRONG>Storage Configuration</STRONG>' >> $TOC_FILE_NAME
+
+    printTable "Disk Drivers and Disk Labels" "disks" >> $TOC_FILE_NAME
+    printTable "SCSI Buses" "scsi" >> $TOC_FILE_NAME
+    printTable "Mounted File Systems and Quotas" "df" >> $TOC_FILE_NAME
+    printTable "Ext2 File System" "ext2fs" >> $TOC_FILE_NAME
+    printTable "Network File System Protocol" "nfs" >> $TOC_FILE_NAME
+
+
+    echo '<P><STRONG>Network Operations</STRONG>' >> $TOC_FILE_NAME
+
+    printTable "TCP/IP Network" "network" >> $TOC_FILE_NAME
+    printTable "IP Routing Tables" "route" >> $TOC_FILE_NAME
+    printTable "Firewall Configuration" "fwall" >> $TOC_FILE_NAME
+    printTable "Point to Point Protocol" "ppp" >> $TOC_FILE_NAME
+    printTable "Host and Domain Host Server" "named" >> $TOC_FILE_NAME
+    printTable "Network Time Protocol" "ntp" >> $TOC_FILE_NAME
+    printTable "DHCP and BOOTP daemon" "dhcp" >> $TOC_FILE_NAME
+    printTable "Simple Network Management Protocol" "snmp" >> $TOC_FILE_NAME
+    printTable "Portmap" "sunonc" >> $TOC_FILE_NAME
+    printTable "Mail Configuration" "mail" >> $TOC_FILE_NAME
+    printTable "Settings for TTY" "tty" >> $TOC_FILE_NAME
+
+
+    echo '<P><STRONG>Applications</STRONG>' >> $TOC_FILE_NAME
+
+
+    printTable "Apache http server" "apache" >> $TOC_FILE_NAME
+    printTable "Samba" "samba" >> $TOC_FILE_NAME
+    printTable "Squid" "squid" >> $TOC_FILE_NAME
+    printTable "PostgreSQL" "pgsql" >> $TOC_FILE_NAME
+
+    echo '</HTML>' >> $TOC_FILE_NAME
+
+
+
+} ; fi
+}
+# -------------------------------------
+# Checks 
+
+
+##################
+### X11.check 
+X11.check(){
+#
+# The file is part of sys_check project
+#
+#
+if [ x"$FUNCTIONS_IS_LOADED" != x"YES" ] ; then {
+echo "To execute use sys_check main part. For example: sys_check -help"
+exit 1
+} ;
+fi
+
+module_begin "X11/Windows Manager" 
+
+section_begin "ps ax | grep X11"
+    execfile ps ax | grep X11
+section_end
+
+section_begin "ls -l /etc/X11"
+    execfile ls -l /etc/X11
+section_end
+
+section_begin "/etc/X11/XF86Config"
+    catfile /etc/X11/XF86Config
+section_end
+
+section_begin "/etc/sysconfig/desktop"
+    catfile /etc/sysconfig/desktop
+section_end
+
+section_begin "/etc/X11/xdm/Xservers"
+    catfile /etc/X11/xdm/Xservers
+section_end
+
+section_begin "/var/log/xdm-error.log"
+    catfile /var/log/xdm-error.log
+section_end
+
+module_end
+
+
+
+}
+
+
+##################
+### acct.check 
+acct.check(){
+#
+# The file is part of sys_check project
+#
+#
+
+if [ x"$FUNCTIONS_IS_LOADED" != x"YES" ] ; then {
+echo "To execute use sys_check main part. For example: sys_check -help"
+exit 1
+} ;
+fi
+
+module_begin "Users and Process Accounting"
+
+section_begin "current users"
+    s_execfile who -iHw
+section_end
+
+section_begin "account's logs"
+    execfile ls -l /var/log/*acct /var/log/?tmp?? 
+section_end
+
+section_begin "last logged users"
+    s_execfile /usr/bin/last -500 -ad 
+section_end
+
+section_begin "bad login attempts"
+    s_execfile /usr/bin/lastb -500 -ad 
+section_end
+
+section_begin "user's connection time"
+    s_execfile /usr/bin/ac -apdz --timewarps
+section_end
+
+section_begin "last commands"
+    s_execfile /usr/bin/lastcomm | head --lines 500
+section_end
+
+section_begin "commands statistics"
+    s_execfile /usr/sbin/sa -an
+section_end
+
+module_end
+
+
+
+}
+
+
+##################
+### adhoc.check 
+adhoc.check(){
+#
+# The file is part of sys_check project
+#
+#
+if [ x"$FUNCTIONS_IS_LOADED" != x"YES" ] ; then {
+echo "To execute use sys_check main part. For example: sys_check -help"
+exit 1
+} ; fi
+
+module_begin "Adhoc information from system administrator"
+
+    section_begin "ls -al $ADHOC_DIR"
+        execfile ls -al $ADHOC_DIR
+    section_end
+
+    section_begin "contents of files in $ADHOC_DIR"
+
+    if [ -d $ADHOC_DIR ] ; then 
+    {
+        echo "Contents is packed in results tar file"
+        ADHOC_ADD=YES
+    } 
+    else 
+    {
+        echo "Directory $ADHOC_DIR is absent"
+    } ; fi
+
+    section_end
+module_end
+
+
+
+
+
+}
+
+
+##################
+### apache.check 
+apache.check(){
+#
+# The file is part of sys_check project
+#
+#
+
+if [ x"$FUNCTIONS_IS_LOADED" != x"YES" ] ; then {
+echo "To execute use sys_check main part. For example: sys_check -help"
+exit 1
+} ;
+fi
+
+process_httpd_entry(){
+  section_begin $1
+
+    if [ -n "$2" ] ; then 
+      catfile $2
+    else
+      echo "Entry $1 not found"
+    fi
+
+  section_end
+}
+
+module_begin "Apache HTTP server"
+
+section_begin "/etc/rc.d/init.d/httpd"
+  catfile /etc/rc.d/init.d/httpd
+section_end
+
+section_begin "httpd -V"
+  execfile /usr/sbin/httpd -V | tee $tmpdir/httpd_V.temp
+
+  HTTPD_ROOT=`cat $tmpdir/httpd_V.temp | strip_httpd_def HTTPD_ROOT`
+
+  SERVER_CONFIG_FILE=`cat $tmpdir/httpd_V.temp | strip_httpd_def SERVER_CONFIG_FILE $HTTPD_ROOT`
+  RESOURCE_CONFIG_FILE=`cat $tmpdir/httpd_V.temp | strip_httpd_def RESOURCE_CONFIG_FILE $HTTPD_ROOT`
+  ACCESS_CONFIG_FILE=`cat $tmpdir/httpd_V.temp | strip_httpd_def ACCESS_CONFIG_FILE $HTTPD_ROOT`
+  TYPES_CONFIG_FILE=`cat $tmpdir/httpd_V.temp | strip_httpd_def TYPES_CONFIG_FILE $HTTPD_ROOT`
+
+  DEFAULT_PIDLOG=`cat $tmpdir/httpd_V.temp | strip_httpd_def DEFAULT_PIDLOG $HTTPD_ROOT`
+  DEFAULT_XFERLOG=`cat $tmpdir/httpd_V.temp | strip_httpd_def DEFAULT_XFERLOG $HTTPD_ROOT`
+  DEFAULT_ERRORLOG=`cat $tmpdir/httpd_V.temp | strip_httpd_def DEFAULT_ERRORLOG $HTTPD_ROOT`
+  DEFAULT_SCOREBOARD=`cat $tmpdir/httpd_V.temp | strip_httpd_def DEFAULT_SCOREBOARD $HTTPD_ROOT`
+
+  rm -f $tmpdir/httpd_V.temp 2>/dev/null
+section_end
+
+section_begin "httpd -l"
+  execfile /usr/sbin/httpd -l
+section_end
+
+section_begin "httpd -t"
+  execfile /usr/sbin/httpd -t
+section_end
+
+section_begin "httpd -S"
+  execfile /usr/sbin/httpd -S
+section_end
+
+process_httpd_entry SERVER_CONFIG_FILE $SERVER_CONFIG_FILE
+
+process_httpd_entry RESOURCE_CONFIG_FILE $RESOURCE_CONFIG_FILE
+
+process_httpd_entry ACCESS_CONFIG_FILE $ACCESS_CONFIG_FILE
+
+process_httpd_entry TYPES_CONFIG_FILE $TYPES_CONFIG_FILE
+
+process_httpd_entry DEFAULT_PIDLOG $DEFAULT_PIDLOG
+
+process_httpd_entry DEFAULT_XFERLOG $DEFAULT_XFERLOG
+
+process_httpd_entry DEFAULT_ERRORLOG $DEFAULT_ERRORLOG
+
+process_httpd_entry DEFAULT_SCOREBOARD $DEFAULT_SCOREBOARD
+
+module_end
+
+}
+
+
+##################
+### config.check 
+config.check(){
+#
+# The file is part of sys_check project
+#
+#
+if [ x"$FUNCTIONS_IS_LOADED" != x"YES" ] ; then {
+   echo "To execute use sys_check main part. For example: sys_check -help"
+   exit 1
+} ; fi
+module_begin "System Configuration Files" 
+
+section_begin "ls -l /"
+    execfile ls /
+section_end
+
+section_begin "ls -l /boot/"
+    execfile ls -l /boot
+section_end
+
+section_begin "/usr/src/linux/.config"
+    catfile /usr/src/linux/.config
+section_end
+
+section_begin "ls -lR /lib/modules"
+    execfile ls -lR /lib/modules
+section_end
+
+if [ x"$CPU_TYPE" = x"INTEL" ] ; then {
+   section_begin "ls -l /usr/src/linux/arch/i386/boot/"
+      execfile ls -l /usr/src/linux/arch/i386/boot/
+   section_end
+} ; fi
+
+if [ x"$CPU_TYPE" = x"ALPHA" ] ; then {
+   section_begin "ls -l /usr/src/linux/arch/i386/boot/"
+       execfile ls -l /usr/src/linux/arch/alpha/boot/
+   section_end
+} ; fi
+
+module_end
+
+
+
+
+
+
+
+
+}
+
+
+##################
+### crontab.check 
+crontab.check(){
+#
+# The file is part of sys_check project
+#
+#
+#
+
+if [ x"$FUNCTIONS_IS_LOADED" != x"YES" ] ; then {
+echo "To execute use sys_check main part. For example: sys_check -help"
+exit 1
+} ;
+fi
+
+
+module_begin "Crontab and At"
+
+
+section_begin "/var/spool/cron"
+
+# *** List the contents of system tables first
+# TO CHECK: do they all exist on Linux?
+# TODO: mark inactive jobs (lines beginning with #-#)
+
+  _SYS_TABLES=" root adm news sys uucp "
+
+  for _T in $_SYS_TABLES; do
+    catfile /var/spool/cron/$_T
+    section_mark
+  done
+
+
+# *** List the contents of user tables (named after accounts in /etc/passwd)
+# TODO: avoid displaying crontables for non-existing accounts (those not mentioned in /etc/passwd)
+
+  for _T in $(lsfiles -A /var/spool/cron); do
+    _T1=" $_T "
+    _S=`echo "$_SYS_TABLES" | sed -n "/$_T1/p"`
+    if [ -z "$_S" ]; then
+      catfile /var/spool/cron/$_T
+      section_mark
+    fi
+  done
+
+section_end
+
+
+section_begin "/etc/crontab"
+  catfile /etc/crontab
+section_end
+
+
+# *** Type the contents of all the directories mentioned in /etc/crontab
+
+for _S in `awk '$7=="run-parts" {print $8}' /etc/crontab`; do
+  section_begin $_S
+
+    execfile ls -A -l $_S
+
+    for _T in `lsfiles -A $_S`; do
+      section_mark
+      cattext $_S/$_T
+    done
+
+  section_end
+done
+
+
+section_begin "/etc/cron.d"
+
+  execfile ls -A -l /etc/cron.d
+
+  for _T in `lsfiles -A /etc/cron.d`; do
+    section_mark
+    catfile /etc/cron.d/$_T
+  done
+
+section_end
+
+
+section_begin "/etc/cron.allow"
+  catfile /etc/cron.allow
+section_end
+
+section_begin "/etc/cron.deny"
+  catfile /etc/cron.deny
+section_end
+
+
+section_begin "Pending jobs"
+  execfile atq -V
+section_end
+
+section_begin "Completed jobs"
+  execfile atq -v
+section_end
+
+section_begin "/var/spool/at"
+  execfile ls -A -l -R /var/spool/at
+section_end
+
+section_begin "/proc/loadavg"
+  catfile /proc/loadavg
+section_end
+
+section_begin "/etc/at.allow"
+  catfile /etc/at.allow
+section_end
+
+section_begin "/etc/at.deny"
+  catfile /etc/at.deny
+section_end
+
+module_end
+
+}
+
+
+##################
+### dev.check 
+dev.check(){
+#
+# The file is part of sys_check project
+#
+# author: Maxim Zaikin
+#
+if [ x"$FUNCTIONS_IS_LOADED" != x"YES" ] ; then {
+echo "To execute use sys_check main part. For example: sys_check -help"
+exit 1
+} ;
+fi
+module_begin "Device Special Files" 
+
+section_begin "ls -lR /dev"
+
+    execfile /bin/ls -lR /dev
+
+section_end
+
+section_begin "ls -LlR /dev"
+
+    execfile /bin/ls -LlR /dev 
+    
+section_end
+    
+module_end
+
+}
+
+
+##################
+### df.check 
+df.check(){
+#
+# The file is part of sys_check project
+#
+#
+if [ x"$FUNCTIONS_IS_LOADED" != x"YES" ] ; then {
+echo "To execute use sys_check main part. For example: sys_check -help"
+exit 1
+} ;
+fi
+module_begin "Mounted File Systems and Quotas" 
+
+	section_begin "/etc/fstab"
+    catfile /etc/fstab
+	section_end
+
+	section_begin "mount"
+    execfile /bin/mount
+	section_end
+
+	section_begin "df"
+    execfile /bin/df -T
+	section_end
+
+	section_begin "quotas"
+
+	catfile /etc/quota.conf
+	section_mark
+
+	execfile /usr/sbin/quotastats
+	section_mark
+
+	catfile /proc/sys/fs/dquot-max
+	section_mark
+
+	catfile /proc/sys/fs/dquot-nr 
+	section_mark
+
+	catfile /proc/slabinfo | grep "slabinfo"
+	catfile /proc/slabinfo | grep "dquot"
+
+	section_mark
+	
+	execfile /usr/bin/quota -g
+	section_mark
+		
+	execfile /usr/bin/quota -gv
+	section_mark
+		
+	execfile /usr/sbin/repquota -avg
+	section_mark
+		
+	execfile /usr/sbin/repquota -avu
+ 
+section_end
+
+module_end
+
+}
+
+
+##################
+### dhcp.check 
+dhcp.check(){
+#
+# The file is part of sys_check project
+#
+#
+
+if [ x"$FUNCTIONS_IS_LOADED" != x"YES" ] ; then {
+echo "To execute use sys_check main part. For example: sys_check -help"
+exit 1
+} ;
+fi
+
+module_begin "DHCP and BOOTP daemon" 
+
+section_begin "dhcpd"
+
+    execfile ps ax | grep dhcpd | grep -v grep | tee $tmpdir/dcheck.temp
+
+    if ! [ -s $tmpdir/dcheck.temp ] ; then
+    {
+        echo "dhcpd is not available."
+
+    }; fi
+
+section_end
+
+section_begin "/etc/dhcpd.conf"
+    catfile /etc/dhcpd.conf
+section_end
+
+section_begin "/etc/dhcpd.leases"
+    catfile /etc/dhcpd.leases
+section_end
+
+section_begin "dhcrelay"
+
+    execfile ps ax | grep dhcrelay | grep -v grep | tee $tmpdir/dcheck.temp
+
+    if ! [ -s $tmpdir/dcheck.temp ] ; then
+    {
+        echo "dhcrelay is not available."
+
+    }; fi
+
+section_end
+
+section_begin "PUMP"
+
+    execfile ps ax | grep pump | grep -v grep | tee $tmpdir/dcheck.temp
+
+    if [ -s $tmpdir/dcheck.temp ] ; then
+    {
+
+        section_mark
+
+        execfile pump --status
+    }
+    else
+    {
+        echo "pump is not available."
+
+    }; fi
+
+section_end
+
+section_begin "dhcpcd"
+
+    execfile ps ax | grep dhcpcd | grep -v grep | tee $tmpdir/dcheck.temp
+
+    if ! [ -s $tmpdir/dcheck.temp ] ; then
+    {
+        echo "dhcpcd is not available."
+
+    }; fi
+
+
+section_end
+
+section_begin "/etc/dhcpc"
+
+    execfile ls -l /etc/dhcpc
+
+    for lfn2 in /etc/dhcpc/*.info ;
+    do { 
+            section_mark
+            catfile $lfn2
+    }; done
+
+section_end
+
+rm -f $tmpdir/dcheck.temp 2>/dev/null
+
+module_end
+
+
+
+}
+
+
+##################
+### disks.check 
+disks.check(){
+#
+# The file is part of sys_check project
+#
+#
+if [ x"$FUNCTIONS_IS_LOADED" != x"YES" ] ; then {
+echo "To execute use sys_check main part. For example: sys_check -help"
+exit 1
+} ;
+fi
+
+checkDisks()
+{
+
+  cat $tmpdir/fdisk.temp | grep '^Disk' | awk '{print $2}' |
+  while read lDisk; do
+    lCurDisk=`echo $lDisk | sed "s/://g";`
+      
+    section_begin $lCurDisk
+      
+      lDiskName=`echo $lCurDisk | sed 's/\// /g'| awk '{print $NF}'`
+
+      if [ -n "`echo $lDiskName | grep 'hd'`" ] ; then
+        execfile /sbin/hdparm -acdgkmnrvuiItT $lCurDisk
+
+        if [ -d "/proc/ide/$lDiskName" ]; then
+          for lfn in `lsfiles /proc/ide/$lDiskName` ; do
+            section_mark
+            catfile /proc/ide/$lDiskName/$lfn
+          done
+        fi
+      else
+        if [ -n "`echo $lDiskName | grep 'sd'`" ] ; then
+          execfile /sbin/hdparm -agrtT $lCurDisk
+
+          if [ -d "/proc/scsi" ]; then
+            for lfn in `lsfiles /proc/scsi` ; do
+              section_mark
+              catfile /proc/scsi/$lfn
+            done
+          fi
+        else
+          execfile /sbin/hdparm -acdgkmnrvutT $lCurDisk
+        fi
+      fi
+
+    section_end
+
+  done
+}
+
+
+module_begin "Disk Drivers and Disk Labels" 
+
+  section_begin "IDE disks"
+    execfile /sbin/fdisk -l /dev/hd? | tee $tmpdir/fdisk.temp
+  section_end
+
+  checkDisks
+
+  section_begin "SCSI disks"
+    execfile /sbin/fdisk -l /dev/sd? | tee $tmpdir/fdisk.temp
+  section_end
+
+  checkDisks
+
+  section_begin "ESDI drives"
+    execfile /sbin/fdisk -l /dev/ed? | tee $tmpdir/fdisk.temp
+  section_end
+
+  if [ -d "/proc/ide" ]; then
+    lPIFiles=`lsfiles /proc/ide`
+    if [ -n $lPIFiles ]; then
+
+      section_begin /proc/ide
+
+        lFrist=no
+
+        for lfn in $lPIFiles ; do
+        {
+          if [ x"$lFirst" = "YES" ] ; then
+          {
+            section_mark
+          } ; fi
+
+          lFirst=YES  
+
+          catfile /proc/ide/$lfn
+
+        } ; done
+
+      section_end
+    fi
+  fi
+
+  section_begin /proc
+    catfile /proc/partitions
+    section_mark
+    catfile /proc/swaps
+  section_end
+
+  rm -f $tmpdir/fdisk.temp 2>/dev/null
+
+module_end
+
+}
+
+
+##################
+### ext2fs.check 
+ext2fs.check(){
+#
+# The file is part of sys_check project
+#
+#
+
+if [ x"$FUNCTIONS_IS_LOADED" != x"YES" ] ; then {
+echo "To execute use sys_check main part. For example: sys_check -help"
+exit 1
+} ;
+fi
+
+module_begin "Ext2 File System"
+
+l_devs=`mount | sed -n "/ext2/{
+s/ on .*//
+p
+}"`
+
+for l_i in $l_devs ; do {
+section_begin "$l_i"
+  execfile /sbin/dumpe2fs $l_i
+section_end
+} ; done 
+
+module_end
+
+
+
+}
+
+
+##################
+### fwall.check 
+fwall.check(){
+#
+# The file is part of sys_check project
+#
+#
+
+if [ x"$FUNCTIONS_IS_LOADED" != x"YES" ] ; then {
+echo "To execute use sys_check main part. For example: sys_check -help"
+exit 1
+} ;
+fi
+
+module_begin "Firewall Configuration" 
+
+section_begin "/proc/net/"
+    execfile ls -l /proc/net/ip_*
+section_end
+
+
+section_begin "/proc/net/ip_fwchains"
+    catfile /proc/net/ip_fwchains
+section_end
+
+section_begin "/proc/net/ip_fwnames"
+    catfile /proc/net/ip_fwnames
+section_end
+
+section_begin "/proc/net/ip_masquerade"
+    catfile /proc/net/ip_masquerade
+section_end
+
+section_begin "/proc/net/ip_masq/"
+    
+    execfile ls -l /proc/net/ip_masq
+
+    ls /proc/net/ip_masq |
+    while read lFile ; do
+    {
+        section_mark
+        catfile /proc/net/ip_masq/$lFile    
+
+    } ; done
+
+section_end
+
+module_end
+
+
+
+}
+
+
+##################
+### mail.check 
+mail.check(){
+#
+# The file is part of sys_check project
+#
+#
+if [ x"$FUNCTIONS_IS_LOADED" != x"YES" ] ; then {
+echo "To execute use sys_check main part. For example: sys_check -help"
+exit 1
+} ;
+fi
+
+module_begin "Mail Configuration" 
+
+section_begin "mailq"
+    execfile mailq
+section_end
+
+section_begin "ps ax | grep sendmail"
+    execfile ps ax | grep sendmail
+section_end
+
+section_begin "/etc/sendmail.cf"
+    catfile /etc/sendmail.cf
+section_end
+
+section_begin "/etc/aliases"
+    catfile /etc/aliases
+section_end
+
+module_end
+
+}
+
+
+##################
+### named.check 
+named.check(){
+#
+# The file is part of sys_check project
+#
+#
+if [ x"$FUNCTIONS_IS_LOADED" != x"YES" ] ; then {
+echo "To execute use sys_check main part. For example: sys_check -help"
+exit 1
+} ;
+fi
+module_begin "Host and Domain Host Server" 
+
+    section_begin "/etc/named.boot"
+	catfile /etc/named.boot
+    section_end
+    
+    section_begin "/etc/named.conf"
+	catfile /etc/named.conf
+    section_end
+
+    section_begin "/etc/hosts"
+	catfile /etc/hosts
+    section_end
+
+    section_begin "/etc/resolv.conf"
+	catfile /etc/resolv.conf
+    section_end
+    
+    section_begin "/var/named/named.local"
+	catfile /var/named/named.local
+    section_end
+
+    section_begin "/var/named/named.ca"
+	catfile /var/named/named.ca
+    section_end
+
+module_end
+
+}
+
+
+##################
+### network.check 
+network.check(){
+#
+# The file is part of sys_check project
+#
+#
+if [ x"$FUNCTIONS_IS_LOADED" != x"YES" ] ; then {
+echo "To execute use sys_check main part. For example: sys_check -help"
+exit 1
+} ;
+fi
+module_begin "TCP/IP Network" 
+
+    section_begin "netstat -s"
+        execfile netstat -s 
+    section_end
+
+    section_begin "/etc/services"
+        catfile /etc/services 
+    section_end
+    
+    section_begin "/etc/inetd.conf"
+        catfile /etc/inetd.conf 
+    section_end
+
+    section_begin "ifconfig"
+        execfile ifconfig 
+    section_end
+
+    section_begin "netstat -g"
+        execfile netstat -g 
+    section_end
+
+    section_begin "netstat -i"
+        execfile netstat -i 
+    section_end
+
+    section_begin "netstat -ap"
+        execfile netstat -ap 
+    section_end
+
+    section_begin "/proc/net/sockstat"
+        catfile /proc/net/sockstat
+    section_end
+
+    section_begin "/proc/net/smp"
+        catfile /proc/net/smp
+    section_end
+
+    section_begin "/proc/net/dev"
+        catfile /proc/net/dev
+    section_end
+    
+    section_begin "/proc/net/arp"
+        catfile /proc/net/arp
+    section_end
+
+    section_begin "/etc/hosts.allow"
+        catfile /etc/hosts.allow
+    section_end
+
+    section_begin "/etc/hosts.deny"
+        catfile /etc/hosts.deny
+    section_end
+    
+module_end
+
+}
+
+
+##################
+### nfs.check 
+nfs.check(){
+#
+# The file is part of sys_check project
+#
+#
+if [ x"$FUNCTIONS_IS_LOADED" != x"YES" ] ; then {
+echo "To execute use sys_check main part. For example: sys_check -help"
+exit 1
+} ;
+fi
+
+module_begin "Network File System Protocol" 
+
+section_begin "Mounted nfs"
+    execfile mount | grep "type nfs"
+section_end
+
+section_begin "/etc/exports"
+    catfile /etc/exports
+section_end
+
+section_begin "showmount"
+    execfile /usr/sbin/showmount --all
+section_end
+
+section_begin "nfsstat"
+    execfile /usr/sbin/nfsstat
+section_end
+
+section_begin "/etc/rc.d/init.d/nfs status"
+    execfile /etc/rc.d/init.d/nfs status
+section_end
+
+module_end
+
+
+
+
+
+
+}
+
+
+##################
+### ntp.check 
+ntp.check(){
+#
+# The file is part of sys_check project
+#
+#
+if [ x"$FUNCTIONS_IS_LOADED" != x"YES" ] ; then {
+echo "To execute use sys_check main part. For example: sys_check -help"
+exit 1
+} ;
+fi
+
+module_begin "Network Time Protocol"
+
+section_begin "ls -l /etc/localtime"
+    execfile ls -l /etc/localtime
+section_end
+
+section_begin "/usr/sbin/xntpdc -p"
+    execfile /usr/sbin/xntpdc -p
+section_end
+
+section_begin "/etc/ntp.conf"
+    catfile /etc/ntp.conf
+section_end
+
+module_end
+
+}
+
+
+##################
+### patch.check 
+patch.check(){
+#
+# The file is part of sys_check project
+#
+#
+if [ x"$FUNCTIONS_IS_LOADED" != x"YES" ] ; then {
+echo "To execute use sys_check main part. For example: sys_check -help"
+exit 1
+} ;
+fi
+module_begin "Packages" 
+
+section_begin "rpm version"
+    execfile rpm --version
+section_end
+
+section_begin "Checking installed packages"
+packages=`rpm -q -a`
+cat << EOF
+Note: 
+              The format of the output is a string of  8  charac-
+              ters, a possible "c" denoting a configuration file,
+              and then the file name.  Each of the  8  characters
+              denotes the result of a comparison of one attribute
+              of the file to the value of that attribute recorded
+              in  the  RPM database.  A single "." (period) means
+              the test passed.  The following  characters  denote
+              failure of certain tests:
+          5      MD5 sum
+          S      File size
+          L      Symlink
+          T      Mtime
+          D      Device
+          U      User
+          G      Group
+          M      Mode (includes permissions and file type)
+-----------------------------------------------------------------
+EOF
+for i in $packages ; do {
+ echo -n "Verifing $i ..."
+ res=`rpm -V $i`
+ if [ x"$res" != x"" ] ; then {
+ echo "Fail"
+# rpm -V $i
+cat << EOF
+ $res
+EOF
+
+ echo
+} ; else {
+  echo "Ok"
+} ; fi
+if [ x"$KILLING" = x"YES" ] ; then {
+ break
+ } ; fi 
+} ; done
+section_end
+module_end
+
+
+
+}
+
+
+##################
+### pgsql.check 
+pgsql.check(){
+#
+# The file is part of sys_check project
+#
+#
+
+if [ x"$FUNCTIONS_IS_LOADED" != x"YES" ] ; then {
+echo "To execute use sys_check main part. For example: sys_check -help"
+exit 1
+} ;
+fi
+
+module_begin "PostgreSQL"
+
+section_begin "postmaster Status"
+  _PM_PID=`ps -A | grep ' postmaster$' | awk '{ print $1 }'`
+
+  if [ -n "$_PM_PID" ] ; then
+    _AWK_PARAM='$1'
+    _AWK_PARAM="$_AWK_PARAM==$_PM_PID"
+
+    _PM_CMD_LINE=`ps ax | awk "$_AWK_PARAM" | awk '{ $1=$2=$3=$4=""; print $0 }' | sed 's/^ *//g'`
+  else
+    _PM_CMD_LINE=
+  fi
+
+  if [ -n "$_PM_CMD_LINE" ] ; then
+    echo "postmaster command line: '"$_PM_CMD_LINE"'"
+  else
+    echo 'postmaster is not loaded'
+  fi
+section_end
+
+if [ -n "$_PM_CMD_LINE" ] ; then
+  section_begin "psql -l"
+    execfile psql -l
+  section_end
+fi
+
+section_begin "Environment Variables"
+
+  echo -n PGHOST=
+  echo $PGHOST
+
+  echo -n PGUSER=
+  echo $PGUSER
+
+  echo -n PGOPTION=
+  echo $PGOPTION
+
+  echo -n PGOPTIONS=
+  echo $PGOPTIONS
+
+  echo -n PGPORT=
+  echo $PGPORT
+
+  echo -n PGTTY=
+  echo $PGTTY
+
+  echo -n PGDATA=
+  echo $PGDATA
+
+  echo -n PGDATABASE=
+  echo $PGDATABASE
+
+  echo -n PGREALM=
+  echo $PGREALM
+
+  echo -n PGDATESTYLE=
+  echo $PGDATESTYLE
+
+  echo -n PGTZ=
+  echo $PGTZ
+
+  echo -n PGGEQO=
+  echo $PGGEQO
+
+  echo -n PGRPLANS=
+  echo $PGRPLANS
+
+  echo -n PGCOSTHEAP=
+  echo $PGCOSTHEAP
+
+  echo -n PGCOSTINDEX=
+  echo $PGCOSTINDEX
+
+section_end
+
+module_end
+
+}
+
+
+##################
+### ppp.check 
+ppp.check(){
+#
+# The file is part of sys_check project
+#
+#
+
+if [ x"$FUNCTIONS_IS_LOADED" != x"YES" ] ; then {
+echo "To execute use sys_check main part. For example: sys_check -help"
+exit 1
+} ;
+fi
+
+module_begin "Point to Point Protocol" 
+
+section_begin "/proc/net/dev"
+    catfile /proc/net/dev | grep -E "ppp[[:digit:]]:"
+section_end
+
+section_begin "ls -Ll /etc/ppp/"
+    execfile ls -Ll /etc/ppp/
+section_end
+
+section_begin "/etc/ppp/options"
+    catfile /etc/ppp/options
+section_end
+
+section_begin "/etc/ppp/ip-up"
+    catfile /etc/ppp/ip-up
+    section_mark
+    catfile /etc/ppp/ip-up.local
+section_end
+
+section_begin "/etc/ppp/ip-down"
+    catfile /etc/ppp/ip-down
+    section_mark
+    catfile /etc/ppp/ip-down.local
+section_end
+
+section_begin "/etc/ppp/*-secrets"
+    s_catfile /etc/ppp/chap-secrets
+    section_mark
+    s_catfile /etc/ppp/pap-secrets
+section_end
+
+module_end
+
+
+
+}
+
+
+##################
+### print.check 
+print.check(){
+#
+# The file is part of sys_check project
+#
+#
+
+if [ x"$FUNCTIONS_IS_LOADED" != x"YES" ] ; then {
+echo "To execute use sys_check main part. For example: sys_check -help"
+exit 1
+} ;
+fi
+
+
+module_begin "Printers"
+
+section_begin "queue status"
+  execfile /usr/sbin/lpc status
+section_end
+
+section_begin "/etc/printcap"
+  catfile /etc/printcap
+section_end
+
+for _D in $( cat /etc/printcap | grep -v '^#' | grep ':sd=' | sed -e 's/:\\//g' | sed -e 's/:sd=*//g' | awk '{print $1}' ); do
+  section_begin $_D
+
+    execfile ls -A -l $_D
+
+    if [ -f $_D/.config ]; then
+      section_mark
+      catfile $_D/.config | grep -v "^password="
+    fi
+
+    if [ -d $_D ]; then
+    {
+        for _F in $( ls -A $_D ); do
+            if [ x"$_F" != x".config" ] ; then
+                section_mark
+                cattext $_D/$_F
+            fi
+        done
+    } ; fi
+  section_end
+done
+
+module_end
+
+}
+
+
+##################
+### process.check 
+process.check(){
+#
+# The file is part of sys_check project
+#
+#
+if [ x"$FUNCTIONS_IS_LOADED" != x"YES" ] ; then {
+echo "To execute use sys_check main part. For example: sys_check -help"
+exit 1
+} ;
+fi
+module_begin "CPUs and Processes" 
+
+    section_begin "CPUs"
+	printCPUSInfo
+    section_end
+
+    section_begin "/proc/cpuinfo"
+	catfile /proc/cpuinfo
+    section_end
+
+    section_begin "uptime"
+	execfile uptime
+    section_end
+    
+    section_begin "vmstat 2 10"
+	execfile vmstat -n 2 10
+    section_end
+
+    section_begin "ps alxwSe"
+	execfile ps alxwSe 
+    section_end
+
+module_end
+
+}
+
+
+##################
+### rcconfig.check 
+rcconfig.check(){
+#
+# The file is part of sys_check project
+#
+#
+if [ x"$FUNCTIONS_IS_LOADED" != x"YES" ] ; then {
+echo "To execute use sys_check main part. For example: sys_check -help"
+exit 1
+} ;
+fi
+module_begin "Startup Parameters" 
+section_begin "ls -lR /etc/sysconfig"
+    execfile ls -R /etc/sysconfig
+section_end
+
+section_begin "Configuration parameters"
+    
+    LOC_FILES=`ls /etc/sysconfig`
+    
+    execfile ls -l /etc/sysconfig/
+    
+    for i in $LOC_FILES ; do { 
+    if [ -f /etc/sysconfig/$i ] ; then {
+        section_mark
+        catfile /etc/sysconfig/$i
+    } ; fi
+    } ; done
+section_end
+
+section_begin "Network parameters"
+
+    LOC_FILES=`ls /etc/sysconfig/network-scripts/ | grep -E "chap|ifcfg"`
+    
+    execfile ls -l /etc/sysconfig/network-scripts/ | grep -E "chap|ifcfg"
+
+    if [ -d /etc/sysconfig/network-scripts/ ] ; then
+	for i in $LOC_FILES ; do 
+	{ 
+	    section_mark
+	    catfile /etc/sysconfig/network-scripts/$i
+
+	} ; done
+    fi	
+
+section_end
+
+module_end
+
+
+}
+
+
+##################
+### route.check 
+route.check(){
+#
+# The file is part of sys_check project
+#
+#
+if [ x"$FUNCTIONS_IS_LOADED" != x"YES" ] ; then {
+echo "To execute use sys_check main part. For example: sys_check -help"
+exit 1
+} ;
+fi
+module_begin "IP Routing Tables" 
+
+    section_begin "route -F"
+	execfile route -F
+    section_end
+    
+    section_begin "route -C"
+	execfile route -C
+    section_end
+
+module_end
+
+}
+
+
+##################
+### samba.check 
+samba.check(){
+#
+# The file is part of sys_check project
+#
+#
+
+if [ x"$FUNCTIONS_IS_LOADED" != x"YES" ] ; then {
+echo "To execute use sys_check main part. For example: sys_check -help"
+exit 1
+} ;
+fi
+
+
+module_begin "Samba"
+
+section_begin "testparm -s"
+  execfile testparm -s | tee $tmpdir/testparm.temp
+  SMB=`cat $tmpdir/testparm.temp | awk '/^Load smb config files from/ {print $NF; exit}'`
+  rm -f $tmpdir/testparm.temp 2>/dev/null
+section_end
+
+section_begin "smbstatus -d"
+  if [ -n "$SMB" ]; then
+    execfile smbstatus -d
+  else
+    execfile smbstatus -d | tee $tmpdir/smbstatus.temp
+    SMB=`cat $tmpdir/smbstatus.temp | awk '/^using configfile = / {print $NF; exit}'`
+    rm -f $tmpdir/smbstatus.temp 2>/dev/null
+  fi
+section_end
+
+  if [ -z "$SMB" ]; then
+    SMB=/usr/local/samba/lib/smb.conf
+
+    if [ ! -f $SMB ]; then
+      SMB=/usr/samba/lib/smb.conf
+      if [ ! -f $SMB ]; then
+        SMB=/etc/smb.conf
+      fi
+    fi
+  fi
+
+  if [ -f $SMB ]; then
+    section_begin $SMB
+      catfile $SMB
+    section_end
+  fi
+
+section_begin "/etc/rc.d/init.d/smb"
+  catfile /etc/rc.d/init.d/smb
+section_end
+
+section_begin "/var/log/samba"
+  execfile ls -l /var/log/samba
+
+  for _F in `lsfiles /var/log/samba` ; do
+    section_mark
+    execfile tail -300 /var/log/samba/$_F 
+  done
+
+section_end
+
+module_end
+
+}
+
+
+##################
+### scsi.check 
+scsi.check(){
+#
+# The file is part of sys_check project
+#
+#
+if [ x"$FUNCTIONS_IS_LOADED" != x"YES" ] ; then {
+echo "To execute use sys_check main part. For example: sys_check -help"
+exit 1
+} ;
+fi
+module_begin "SCSI Buses" 
+
+# ?? max_scsi_luns
+
+if [ -f /proc/scsi/scsi ]; then
+
+    section_begin "/proc/sys/kernel/sg-big-buff"
+	catfile /proc/sys/kernel/sg-big-buff
+    section_end
+
+    section_begin "/proc/scsi/scsi"
+	catfile /proc/scsi/scsi
+    section_end
+
+    
+    lCurDir=$PWD
+    
+    cd /proc/scsi/
+    
+    for lfn in *
+    do { 
+	if [ -d /proc/scsi/$lfn ] ; then	
+	
+	    section_begin "scsi device: $lfn";
+	    
+	    cd /proc/scsi/$lfn
+	    for lfn2 in * ;
+	    do { 
+		#if [ -f /proc/scsi/$fn/$lfn2 ] ; then
+		
+		    catfile /proc/scsi/$lfn/$lfn2
+		    section_mark
+		#fi
+	    }; done
+	    
+	    cd $OLDPWD
+	    section_end
+	fi
+    };  done
+    
+    cd $lCurDir;
+fi    
+    
+module_end
+
+}
+
+
+##################
+### security.check 
+security.check(){
+#
+# The file is part of sys_check project
+#
+#
+
+if [ x"$FUNCTIONS_IS_LOADED" != x"YES" ] ; then {
+echo "To execute use sys_check main part. For example: sys_check -help"
+exit 1
+} ;
+fi
+
+module_begin "Security Information (Users and Groups)"
+
+section_begin "/etc/shells"
+    catfile /etc/shells
+section_end
+
+section_begin "/etc/profile"
+    catfile /etc/profile
+section_end
+
+section_begin "/etc/csh.cshrc"
+    catfile /etc/csh.cshrc
+section_end
+
+section_begin "/etc/bashrc"
+    catfile /etc/bashrc
+section_end
+
+section_begin "/etc/zshrc"
+    catfile /etc/zshrc
+section_end
+
+section_begin "ftp"
+    s_catfile /etc/ftpusers
+    section_mark
+    s_catfile /etc/ftpgroups
+section_end
+
+section_begin "account's files"
+
+    execfile ls -l /etc/passwd* /etc/group* /etc/*shadow
+    section_mark
+
+    s_catfile /etc/passwd
+    section_mark
+
+    s_catfile /etc/group
+    section_mark
+
+    s_catfile /etc/shadow
+    section_mark
+
+    s_catfile /etc/gshadow
+    section_mark
+
+    s_execfile /usr/sbin/pwck -r
+    section_mark
+
+    s_execfile /usr/sbin/drpck -r
+
+section_end
+
+
+section_begin "login.defs"
+    s_catfile /etc/login.defs
+section_end
+
+section_begin "pam config files"
+
+    s_catfile /etc/pam.conf
+    section_mark
+    execfile ls -l /etc/pam.d
+
+    for lf in `lsfiles /etc/pam.d` ; do
+    {
+        section_mark
+        s_catfile /etc/pam.d/$lf
+    } ; done
+
+section_end
+
+section_begin "pam modules"
+    execfile ls -l /lib/security
+    section_mark
+    execfile ls -l /usr/lib/security/
+section_end
+
+section_begin "/etc/security files"
+
+    execfile ls -l /etc/security
+
+    for lf in `lsfiles /etc/security` ; do
+    {
+        section_mark
+        s_catfile /etc/security/$lf
+    } ; done
+
+section_end
+
+module_end
+
+
+
+}
+
+
+##################
+### snmp.check 
+snmp.check(){
+#
+# The file is part of sys_check project
+#
+#
+if [ x"$FUNCTIONS_IS_LOADED" != x"YES" ] ; then {
+echo "To execute use sys_check main part. For example: sys_check -help"
+exit 1
+} ;
+fi
+
+module_begin "Simple Network Management Protocol" 
+
+section_begin "ps ax | grep snmp"
+    execfile ps ax | grep snmp
+section_end
+
+section_begin "ls -la /etc/snmp"
+    execfile ls -la /etc/snmp
+section_end
+
+section_begin "ls -lRa /usr/share/snmp"
+    execfile ls -lRa /usr/share/snmp
+section_end
+
+section_begin "/etc/snmp/acl.conf"
+    catfile /etc/snmp/acl.conf
+section_end
+
+section_begin "/etc/snmp/context.conf"
+    catfile /etc/snmp/context.conf
+section_end
+
+section_begin "/etc/snmp/party.conf"
+    catfile /etc/snmp
+section_end
+
+section_begin "/etc/snmp/snmpd.conf"
+    catfile /etc/snmp/snmpd.conf
+section_end
+
+section_begin "/etc/snmp/snmpd.local.conf"
+    catfile /etc/snmp/snmpd.local.conf
+section_end
+
+section_begin "/etc/snmp/view.conf"
+    catfile /etc/snmp/view.conf
+section_end
+
+module_end
+
+
+
+
+
+
+
+
+
+
+
+
+}
+
+
+##################
+### squid.check 
+squid.check(){
+#
+# The file is part of sys_check project
+#
+#
+
+if [ x"$FUNCTIONS_IS_LOADED" != x"YES" ] ; then {
+echo "To execute use sys_check main part. For example: sys_check -help"
+exit 1
+} ;
+fi
+
+module_begin "Squid"
+
+section_begin "/etc/rc.d/init.d/squid"
+  catfile /etc/rc.d/init.d/squid
+section_end
+
+section_begin "/etc/squid/squid.conf"
+  catfile /etc/squid/squid.conf
+section_end
+
+section_begin "/etc/squid/mib.txt"
+  catfile /etc/squid/mib.txt
+section_end
+
+section_begin "/etc/squid/mime.conf"
+  catfile /etc/squid/mime.conf
+section_end
+
+section_begin "/var/log/squid/access.log"
+  catfile /var/log/squid/access.log
+section_end
+
+section_begin "/var/log/squid/cache.log"
+  catfile /var/log/squid/cache.log
+section_end
+
+section_begin "/var/log/squid/store.log"
+  catfile /var/log/squid/store.log
+section_end
+
+module_end
+
+}
+
+
+##################
+### startup.check 
+startup.check(){
+#
+# The file is part of sys_check project
+#
+#
+if [ x"$FUNCTIONS_IS_LOADED" != x"YES" ] ; then {
+echo "To execute use sys_check main part. For example: sys_check -help"
+exit 1
+} ;
+fi
+module_begin "System Startup Procedures" 
+
+section_begin "ls -lR /etc/rc.d/"
+    execfile ls -lR /etc/rc.d
+section_end
+
+section_begin "/etc/inittab"
+    catfile /etc/inittab
+section_end
+
+module_end
+
+}
+
+
+##################
+### sunonc.check 
+sunonc.check(){
+#
+# The file is part of sys_check project
+#
+#
+if [ x"$FUNCTIONS_IS_LOADED" != x"YES" ] ; then {
+echo "To execute use sys_check main part. For example: sys_check -help"
+exit 1
+} ;
+fi
+
+module_begin "Portmap" 
+
+section_begin "/etc/rpc"
+    catfile /etc/rpc
+section_end
+
+section_begin "rpcinfo -p"
+    execfile /usr/sbin/rpcinfo -p
+section_end
+
+module_end
+
+
+
+}
+
+
+##################
+### sysconfig.check 
+sysconfig.check(){
+#
+# The file is part of sys_check project
+#
+#
+if [ x"$FUNCTIONS_IS_LOADED" != x"YES" ] ; then {
+echo "To execute use sys_check main part. For example: sys_check -help"
+exit 1
+} ;
+fi
+
+module_begin "Modules and Kernel Information" 
+
+section_begin "lsmod"
+    execfile lsmod
+section_end
+
+section_begin "ksyms -a -m"
+    execfile ksyms -a -m
+section_end
+
+section_begin "Modules parameters"
+    catfile /etc/conf.modules
+    section_mark
+    catfile /etc/modules.conf
+section_end
+
+module_end
+
+
+}
+
+
+##################
+### syslog.check 
+syslog.check(){
+#
+# The file is part of sys_check project
+#
+#
+
+if [ x"$FUNCTIONS_IS_LOADED" != x"YES" ] ; then {
+echo "To execute use sys_check main part. For example: sys_check -help"
+exit 1
+} ;
+fi
+
+
+module_begin "System Logs"
+
+section_begin "/etc/syslog.conf"
+  catfile /etc/syslog.conf
+section_end
+
+
+LOG_LINES=300
+
+_SHOWN_FILES=" "
+
+for _F in $(cat /etc/syslog.conf | grep -v '^#' | awk '{print $2}' | grep '^/' )
+  do
+    if [ -f $_F ]; then
+      _F1=`echo $_F | sed 's/\//?/g '`
+      _S=`echo "$_SHOWN_FILES" | sed -n "/ $_F1 /p"`
+
+      if [ -z "$_S" ]; then
+        section_begin "$_F"
+          execfile tail -$LOG_LINES $_F
+        section_end
+
+        _SHOWN_FILES="$_SHOWN_FILES$_F1 "
+      fi
+    fi
+  done
+
+module_end
+
+}
+
+
+##################
+### tty.check 
+tty.check(){
+#
+# The file is part of sys_check project
+#
+#
+if [ x"$FUNCTIONS_IS_LOADED" != x"YES" ] ; then {
+echo "To execute use sys_check main part. For example: sys_check -help"
+exit 1
+} ;
+fi
+
+module_begin "Settings for TTY"
+
+section_begin "/etc/securettys"
+    catfile /etc/rpc
+section_end
+
+section_begin "/etc/gettydefs"
+    catfile /etc/gettydefs
+section_end
+
+section_begin "/etc/termcaps"
+    catfile /etc/gettydefs
+section_end
+
+module_end
+
+
+}
+
+
+##################
+### uerf.check 
+uerf.check(){
+#
+# The file is part of sys_check project
+#
+#
+if [ x"$FUNCTIONS_IS_LOADED" != x"YES" ] ; then {
+echo "To execute use sys_check main part. For example: sys_check -help"
+exit 1
+} ;
+fi
+module_begin "System Boot Message" 
+
+    section_begin "dmesg"
+        execfile dmesg
+    section_end
+
+    section_begin "boot log"
+        section_link "syslog" "Check \"System Logs\" entries for boot.log"
+    section_end
+
+module_end
+}
+
+
+##################
+### uname.check 
+uname.check(){
+#
+# The file is part of sys_check project
+#
+#
+if [ x"$FUNCTIONS_IS_LOADED" != x"YES" ] ; then {
+echo "To execute use sys_check main part. For example: sys_check -help"
+exit 1
+} ;
+fi
+
+module_begin "System Version" 
+
+section_begin "uname -a"
+    execfile uname -a
+section_end
+
+section_begin "Kernel cmd line"
+    catfile /proc/cmdline
+section_end
+
+section_begin "Boot loader configuration"
+    case $CPU_TYPE in
+    ALPHA)
+    catfile /etc/aboot.conf
+    section_mark
+    catfile /etc/milo.conf
+    ;;
+    INTEL)
+    catfile /etc/lilo.conf
+    ;;
+    *)
+    echo "Unknown cpu type $CPU_TYPE"
+    esac
+section_end
+
+section_begin "/etc/motd"
+    catfile /etc/motd
+section_end
+
+section_begin "/etc/issue"
+    catfile /etc/issue
+section_end
+
+module_end
+
+
+
+
+}
+
+
+##################
+### vm.check 
+vm.check(){
+#
+# The file is part of sys_check project
+#
+#
+if [ x"$FUNCTIONS_IS_LOADED" != x"YES" ] ; then {
+echo "To execute use sys_check main part. For example: sys_check -help"
+exit 1
+} ;
+fi
+module_begin "Virtual Memory and Swap" 
+
+  section_begin "vmstat 2 10"
+    execfile vmstat -n 2 10
+  section_end
+
+  section_begin "swapon -s"
+    execfile swapon -s
+  section_end
+
+  section_begin "ipcs -a"
+    execfile ipcs -a
+  section_end
+
+    
+  section_begin "/proc/sys/vm"
+    catfile /proc/sys/vm/bdflush
+
+    section_mark
+    catfile /proc/sys/vm/buffermem
+
+    section_mark
+    catfile /proc/sys/vm/freepages
+
+    section_mark
+    catfile /proc/sys/vm/kswapd
+
+    section_mark  
+    catfile /proc/sys/vm/overcommit_memory
+
+    section_mark
+    catfile /proc/sys/vm/page-cluster
+
+    section_mark
+    catfile /proc/sys/vm/pagecache
+
+    section_mark
+    catfile /proc/sys/vm/pagetable_cache
+
+    section_mark
+    catfile /proc/stat
+
+    section_mark
+    catfile /proc/sys/vm/swapctl
+
+  section_end 
+
+  section_begin "/proc/meminfo"
+    catfile /proc/meminfo 
+  section_end
+
+  section_begin "top -bS -c -n 1"
+    execfile top -bS -c -n1 | tee $tmpdir/top.temp
+  section_end
+
+# This section uses temp file $tmpdir/top.temp produced in the above section
+
+  section_begin "Processes"
+    cat $tmpdir/top.temp | grep -E '^ *PID' > $tmpdir/top_hdr.temp
+    cat $tmpdir/top.temp | gawk 'BEGIN {x=0};$1=="PID" {x=1;next};x==1 {print $0}' > $tmpdir/top_no_hdr.temp
+
+    _PIDS=`cat $tmpdir/top_no_hdr.temp | gawk '{print $1}'`
+
+    for _PID in $_PIDS; do
+      section_mark
+      cat $tmpdir/top_hdr.temp
+      cat $tmpdir/top_no_hdr.temp | grep -E "^ *${_PID} "
+      echo
+
+      if [ -d "/proc/$_PID" ]; then
+          catfile /proc/${_PID}/cmdline
+          echo
+          catfile /proc/${_PID}/stat
+          echo
+          catfile /proc/${_PID}/statm
+          echo
+          catfile /proc/${_PID}/status
+          echo
+      fi
+    done
+
+  section_end
+
+    rm -f $tmpdir/top.temp 2>/dev/null
+    rm -f $tmpdir/top_hdr.temp 2>/dev/null
+    rm -f $tmpdir/top_no_hdr.temp 2>/dev/null
+
+module_end
+
+}
+
+#
+# Main sys_check part
+#
+#
+
+# is super user?
+
+if [ x"$UID" != x"0" ] ; then {
+  echo "You have to run sys_check under root account"
+  exit 1
+} ; fi
+
+# Default values
+ONEFILE=YES
+COMPAR=
+DO_HTML=YES
+DO_VERSION=no
+DO_TARGZIP=no
+DO_GHTML=no
+DO_SECALL=no
+
+DO_DEBUG=no
+
+DO_FRAMES=no
+DO_ADVFRAMES=no
+DO_LINE_HTML=YES
+
+HTML_FILE_NAME="sys_check.html"
+TARGZIP_FILE_NAME="escalate.tgz"
+
+FRAME_FILE_NAME="sys_checkfr.html"
+TOC_FILE_NAME="sys_checktoc.html"
+
+RUN_PWD=$PWD
+
+
+ADHOC_DIR=${ADHOC_DIR:=/var/adhoc}
+# useful functions
+ if [ x"$ONEFILE" != x"YES" ] ; then {  
+    . functions
+ } ; fi
+# setup path
+PATH=$PATH:/sbin:/usr/sbin:/bin:/usr/bin
+
+# Command line parsing
+for i in $@ ; do {
+ case $i in 
+ -debug)
+    DO_DEBUG=YES
+ ;;
+ -all) 
+    DO_SECALL=YES
+ ;;
+ -ghtml) 
+    DO_GHTML=YES
+ ;;
+ -frame)
+    DO_FRAMES=YES
+ ;;
+ -advframe)
+    DO_ADVFRAMES=YES
+    DO_LINE_HTML=no
+ ;;
+ -help) 
+    usage
+    exit 1
+ ;;
+ -version) 
+    DO_VERSION=YES
+ ;;
+ -com=*) 
+    COMPAR=`echo $i | sed "s/^-com=*//g" | sed "s/,/ /g"`
+ ;;
+ -escalate) 
+    DO_TARGZIP=YES
+ ;;
+ -output)
+    HTML_FILE_NAME=`echo $@ | awk '{ printf "%s", substr($0, match($0, "-output"));}' | awk '{if ($2!="" && $2!="-") printf "%s", $2; else printf "";}'`
+
+    if [ x"$HTML_FILE_NAME" = x"" ] ; then
+    {
+        echo "sys_check: invalid parameter: $i . Use -help"
+        exit 1
+    
+    } ; fi
+ ;;
+ *)
+    if [ x"$HTML_FILE_NAME" != x"$i" ] ; then
+    {
+        echo "sys_check: invalid parameter: $i . Use -help"
+        exit 1
+    } ; fi
+ ;;
+ esac
+} ; done
+
+ALLCHECKS="
+uname 
+uerf 
+patch 
+config 
+sysconfig 
+rcconfig 
+startup 
+vm 
+process 
+dev 
+print 
+crontab 
+mail 
+syslog 
+X11 
+acct
+adhoc 
+disks
+scsi
+df
+ext2fs
+nfs
+network
+ppp
+named
+route
+ntp
+snmp
+dhcp
+sunonc
+tty
+security
+samba
+apache
+squid
+fwall
+pgsql
+"
+
+if [ x"$COMPAR" != x"" ] ; then 
+{
+  CHECKS=$COMPAR 
+  } ;
+else 
+{
+  CHECKS=$ALLCHECKS
+} ; fi
+
+tmp=`uname -m | tr a-z A-Z | sed "s/^I[0-9]86/X86/g"`
+case $tmp in 
+X86) 
+    CPU_TYPE=INTEL
+;;
+ALPHA)
+    CPU_TYPE=ALPHA
+;;
+*)
+    CPU_TYPE=UNKNOWN
+;;
+esac
+
+
+OS_NAME=
+OS_VERSION=
+
+TEMP_FILE=sys_check.temp.file
+
+echo
+printScriptVersion
+echo
+echo
+
+if [ x"$DO_VERSION" = x"YES" ] ; then {
+exit 1
+}; fi
+ 
+
+if [ -f /etc/redhat-release ] ; then
+{
+    OS_NAME="REDHAT"
+    OS_VERSION=`cat /etc/redhat-release | awk '{printf "%s", $5; };'`
+}
+else
+{
+    echo "sys_check supports only REDHAT Linux!"
+    echo
+
+    exit 1
+
+}; fi
+
+echo "OS - $OS_NAME VERSION - $OS_VERSION PLATFORM - $CPU_TYPE"
+
+#---- check utils  ------
+
+    checkUtils
+
+#------------------------
+
+echo -n "Where do you want to put result [/var/tmp] :"
+
+read tmpdir
+if [ x"$tmpdir" = x"" ] ; then {
+ tmpdir=/var/tmp
+} ; fi
+if [ ! -d $tmpdir ] ; then {
+ mkdir $tmpdir
+} ; fi
+
+
+echo $$ > $tmpdir/sys_check.running
+
+
+errlist=
+
+cdir=`pwd`
+
+if [ x"$DO_GHTML" != x"YES" ] ; then 
+{
+
+#-------- sys_check system info ----------
+#cat /etc/issue 2>/dev/null > $tmpdir/sys_check.info
+
+echo ".MARK" > $tmpdir/sys_check.info
+#echo >> $tmpdir/sys_check.info
+
+if [ x"$HOSTNAME" = x"" ] ; then
+{
+    echo "sys_check for `uname -a | awk '{print $2;}'`" >> $tmpdir/sys_check.info
+}
+else
+{
+    echo "sys_check for $HOSTNAME" >> $tmpdir/sys_check.info
+} ; fi
+
+echo >> $tmpdir/sys_check.info
+echo ".MARK" >> $tmpdir/sys_check.info
+#echo >> $tmpdir/sys_check.info
+printScriptVersion >> $tmpdir/sys_check.info
+echo >> $tmpdir/sys_check.info
+cat /etc/issue 2>/dev/null >> $tmpdir/sys_check.info
+timestamp_here >> $tmpdir/sys_check.info
+echo >> $tmpdir/sys_check.info
+echo `uname -a` >> $tmpdir/sys_check.info
+echo "Platform - $CPU_TYPE" >> $tmpdir/sys_check.info
+printCPUSInfo  >> $tmpdir/sys_check.info
+
+echo  >> $tmpdir/sys_check.info
+echo "Arguments to sys_check script: $@" >> $tmpdir/sys_check.info
+echo >> $tmpdir/sys_check.info
+#-------------------------------------
+
+working &
+
+for check_name in $CHECKS ; do { 
+ 
+ rm -f $tmpdir/$check_name.results
+
+ if [ x"$ONEFILE" != x"YES" ] ; then {  
+    . $check_name.check 2>&1 1>>$tmpdir/$check_name.results | tee --append $tmpdir/$check_name.results > $tmpdir/$check_name.errors
+ } else {
+    $check_name.check 2>&1 1>>$tmpdir/$check_name.results | tee --append $tmpdir/$check_name.results > $tmpdir/$check_name.errors  
+ } ; fi
+
+
+ if [ x"$KILLING" = x"YES" ] ; then 
+ {
+    mv $tmpdir/$check_name.results $tmpdir/$check_name.results.canceled
+    tarlist="$tarlist $check_name.results.canceled" 
+    echo 
+
+    errlist="$errlist $check_name.errors";
+
+    echo -n "Do you want to stop sys_check[N]?"
+
+    read ans
+
+    if [ x"$ans" = x"Y" -o x"$ans" = x"y" ] ; then 
+    {
+        break
+    } ; 
+    else 
+    {
+        KILLING=
+    } fi ;
+
+  continue 
+
+ } ; fi 
+
+ tarlist="$tarlist $check_name.results" ;
+ errlist="$errlist $check_name.errors";
+}  ; done
+
+
+#generateExecSection
+
+cd $tmpdir
+
+timestamp_here >> sys_check.info
+
+    if [ x"$DO_TARGZIP" = x"YES" ] ; then 
+    {
+        if [ x"$ADHOC_ADD" = x"YES" ] ; then 
+        {
+            tar cf - $tarlist $errlist sys_check.info $ADHOC_DIR/* | gzip > $TARGZIP_FILE_NAME
+        }
+        else 
+        {
+            tar cf - $tarlist $errlist sys_check.info | gzip > $TARGZIP_FILE_NAME
+        } ; fi
+
+        echo -e "\nResults are in $tmpdir/$TARGZIP_FILE_NAME"
+    } 
+    else 
+    {
+        echo
+    } ; fi
+
+} 
+else
+{
+    tarlist=
+    errlist=
+
+    cd $tmpdir
+
+    for check_name in *.results ; do 
+    {    
+        if [ -f $check_name ] ; then
+        {
+            tarlist="$tarlist $check_name"
+            errlist="$errlist `echo -n $check_name | sed 's/\.results/\.errors/g'`";
+        } ; fi
+    }; done
+
+
+    if [ x"$tarlist" = x"" ] ; then
+    {
+        rm -f sys_check.running
+        echo
+        echo "No sys_check files in $PWD"
+        cd $cdir
+        exit 1    
+    }
+    else
+    {
+        if [ ! -f "sys_check.info" ] ; then
+        {
+            rm -f sys_check.running            
+            echo
+            echo "No sys_check.info in $PWD" 
+            cd $cdir
+            exit 1
+
+        }; fi
+
+    } ; fi
+
+    echo
+
+} ; fi
+
+if [ x"$KILLING" != x"YES" ] ; then
+{
+    if [ x"$DO_HTML" = x"YES" ] ; then 
+    {
+        echo -n "Producing HTML ($HTML_FILE_NAME)"
+
+        if [ x"$ONEFILE" != x"YES" ] ; then 
+        {  
+            . $cdir/res2html > $HTML_FILE_NAME
+        } 
+        else 
+        {
+            res2html > $HTML_FILE_NAME
+
+        } ; fi  
+
+    } ; fi
+
+} ; fi
+
+
+if [ x"$KILLING" = x"YES" ] ; then
+{
+    echo "sys_check terminated with incomplete output!"
+
+} ; fi
+
+if [ x"$DO_GHTML" != x"YES" ] ; then 
+{
+    rm -f $tarlist $errlist sys_check.info
+
+} ; fi
+
+cd $cdir
+rm -f $tmpdir/sys_check.running
+echo

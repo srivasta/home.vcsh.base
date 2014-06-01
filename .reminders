@@ -1,0 +1,67 @@
+########################### -*- Mode: Fundamental -*- #########################
+## .reminders --- 
+## Author           : Manoj Srivastava ( srivasta@graceland ) 
+## Created On       : Fri Jan 28 14:08:29 1994
+## Created On Node  : graceland
+## Last Modified By : Manoj Srivastava
+## Last Modified On : Fri Jan 28 15:09:55 1994
+## Last Machine Used: graceland
+## Update Count     : 10
+## Status           : Unknown, Use with caution!
+## HISTORY          : 
+## Description      : 
+## 
+###############################################################################
+
+
+FSET _double(x) 2*x
+FSET _yeardiff(date1, date2) year(date1) - year(date2)
+FSET _since(x) ord(year(trigdate())-x)
+
+# REM Wednesday  AT 15:00 +75 *15 MSG Weekly meeting %1.
+
+REM [trigger(moondate(0))] PS [psmoon(0)]
+REM [trigger(moondate(1))] PS [psmoon(1)]
+REM [trigger(moondate(2))] PS [psmoon(2)]
+REM [trigger(moondate(3))] PS [psmoon(3)]
+REM Sat Sun PS [psshade(95)]
+  
+REM  8 Jan +6 MSG Mike Shardo's [_since(1972)]  birthday is %b.
+REM 21 Jan +6 MSG Sabina & Debashis [_since(1989)] anniversary is %b.
+REM 27 Jan +6 MSG Thugs [_since(1966)] birthday is %b.
+REM  8 Feb +6 MSG Riva Cundall's [_since(1973)] birthday is %b.
+REM 28 Feb +6 MSG Danny Shardo's [_since(1978)] birthday is %b.
+REM  1 Mar +6 MSG Jack Shardo's [_since(1954)] birthday is %b.
+REM  4 Mar +6 MSG Angie Shardo's [_since(1973)] birthday is %b.
+REM 25 Mar +6 MSG June Shardo's [_since(1956)] birthday is %b.
+REM 25 Mar +6 MSG Jeff Shardo's [_since(1956)] birthday is %b.
+REM 22 Mar +6 MSG my [_since(1962)] birthday is %b.
+REM 24 Mar +6 MSG Surya's Eldest [_since(1997)] birthday is %b.
+REM  6 Apr +6 MSG Judith Shardo's [_since(1946)] birthday is %b.
+REM 14 Apr +6 MSG Sharad's [_since(1962)] birthday is %b.
+REM 30 Apr +6 MSG Partho's [_since(1962)] birthday is %b.
+REM  8 May +6 MSG Jim  Shardo's [_since(1949)] birthday is %b.
+REM 28 May +6 MSG Kartik's [_since(1964)] birthday is %b.
+REM 20 Jul +6 MSG Molly's [_since(1964)] birthday is %b.
+REM 21 Jul +6 MSG Jackie Shardo's [_since(1974)] birthday is %b.
+REM 27 Jul +6 MSG Rob's [_since(1964)] birthday is %b.
+REM 28 Aug +6 MSG Sushant's [_since(1964)] birthday is %b.
+REM 11 Sep +6 MSG Sabina's [_since(1966)] birthday is %b.
+REM 11 Sep +6 MSG Jerry Shardo's [_since(1960)] birthday is %b.
+REM 15 Sep +6 MSG Sandeep Gupta's [_since(1962)] birthday is %b.
+REM 25 Sep +6 MSG jijji's [_since(1954)] birthday is %b.
+REM  1 Oct +6 MSG Erika Bach's [_since(1966)] birthday is %b.
+REM 11 Oct +6 MSG Krishnan's [_since(1961)] birthday is %b.
+REM 20 Oct +6 MSG Jason's [_since(1981)] birthday is %b.
+REM 28 Oct +6 MSG Sabina & Debashis [_since(1988)] anniversary is %b.
+REM 15 Nov +6 MSG J.C. Shardo's [_since(1952)] birthday is %b.
+REM 18 Nov +6 MSG Debashis [_since(1961)] birthday is %b.
+REM 19 Nov +6 MSG John's [_since(1958)] birthday is %b.
+REM  2 Dec +6 MSG Reema's [_since(1964)] birthday is %b.
+REM 10 Dec +6 MSG Anu's [_since(1969)] birthday is %b.
+REM 13 Dec +6 MSG As-is's [_since(1964)] birthday is %b.
+REM 14 Dec +6 MSG Ruchira's [_since(1966)] birthday is %b.
+REM 18 Dec +6 MSG Ruby's [_since(1964)] birthday is %b.
+
+
+

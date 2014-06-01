@@ -1,0 +1,75 @@
+#!/bin/bash
+#                               -*- Mode: Sh -*- 
+# update_archive --- 
+# Author           : Manoj Srivastava ( srivasta@glaurung.internal.golden-gryphon.com ) 
+# Created On       : Tue May 10 10:14:46 2005
+# Created On Node  : glaurung.internal.golden-gryphon.com
+# Last Modified By : Manoj Srivastava
+# Last Modified On : Tue May 10 10:53:47 2005
+# Last Machine Used: glaurung.internal.golden-gryphon.com
+# Update Count     : 8
+# Status           : Unknown, Use with caution!
+# HISTORY          : 
+# Description      : 
+# 
+# arch-tag: d7811cb6-16fa-4286-8990-1354f190d457
+
+set -e
+
+copies=2
+#packages=${1+"$@"}
+
+
+BASEDIR=$HOME/public_html
+WORKDIR=$BASEDIR/packages
+
+LOGFILE=$HOME/var/log/archivelog
+
+CONF=$HOME/etc/ftp-archive.conf
+
+# Routine to clean up old versions of packages
+only_one () {
+    dir=$1;
+    pkg=$2
+    ext=$3
+
+    set X $(ls -a $dir/${pkg}_*.${ext} | sort -u)
+    shift
+    for candidate
+      do
+      if [ $# -gt $copies ]; then 	# keep 2 copies
+	  echo rm -f $candidate; 
+	  rm -f $candidate; 
+	  shift; 
+      fi; 
+    done
+}
+
+
+cd $WORKDIR/
+packages=$(for i in pool/*/*; do echo $i|perl -ple 's|.*/||g;'; done)
+for package in $packages; do
+    letter=$(echo $package|perl -ple 's/(.).*/\1/;')
+    pkgdir="$WORKDIR/pool/$letter/$package"
+
+    # Clean out each package
+    if [ -d $pkgdir ]; then
+        # Clean out source and binary packages
+        for type in deb diff.gz dsc changes; do
+            for file in $(find $pkgdir -type f -name \*.$type | \
+	        perl -ple 's|.*/||g; s/_.*$//g' | sort -u); do
+              only_one $pkgdir $file $type
+            done
+        done
+    fi    
+done
+
+apt-ftparchive generate $CONF
+apt-ftparchive release -c $CONF $WORKDIR/ > $WORKDIR/Release
+rm -f $WORKDIR/Release.gpg; 
+gpg --batch -ba --sign -o $WORKDIR/Release.gpg $WORKDIR/Release 
+
+# All done
+exit 0
+
+

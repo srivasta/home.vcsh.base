@@ -1,0 +1,28 @@
+#!/bin/sh
+#                               -*- Mode: Sh -*- 
+# check_watch --- 
+# Author           : Manoj Srivastava ( srivasta@glaurung.internal.golden-gryphon.com ) 
+# Created On       : Mon May  2 13:30:52 2005
+# Created On Node  : glaurung.internal.golden-gryphon.com
+# Last Modified By : Manoj Srivastava
+# Last Modified On : Tue Sep 15 08:21:42 2009
+# Last Machine Used: anzu.internal.golden-gryphon.com
+# Update Count     : 8
+# Status           : Unknown, Use with caution!
+# HISTORY          : 
+# Description      : 
+# 
+# 
+# arch-tag: 0b3a171a-c6a7-4064-b20a-c69cf24efeea
+
+WORKDIR_BASE=/usr/local/src/debian
+
+
+find ${WORKDIR_BASE} -type f -name watch | sort | while read i; 
+  do 
+  j=$(dirname $i); 
+  k=$(echo $j | sed -e s,/debian$,,); 
+  ( cd $k; uscan --pasv --report); 
+  echo ${k##${WORKDIR_BASE}/} done; 
+  echo ""; 
+done

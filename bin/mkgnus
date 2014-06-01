@@ -1,0 +1,124 @@
+#! /bin/bash
+
+set -e
+progname="`basename \"$0\"`"
+pversion='$Revision: 1.4 $'
+
+GNUSNAME="gnus"
+GNUS_TARNAME="${GNUSNAME}.tar.gz"
+GNUS_URL="http://www.gnus.org/${GNUS_TARNAME}"
+## GNUS_URL="ftp://ftp.gnus.org/pub/emacs/gnus/${GNUS_TARNAME}"
+GNUS_TARFILE="/tmp/${GNUSNAME}.tar.gz"
+DEBIAN_FILES="/usr/local/share/emacs/site-lisp/debian-gnus.tar.gz"
+
+LISPDIR="/usr/local/share/emacs/site-lisp"
+DESTDIR="/usr/local/share/emacs/19.34/site-lisp"
+action='withecho'
+customcopy="NO"
+
+withecho () {
+        echo " $@" >&2
+        "$@"
+}
+
+usageversion () {
+        cat >&2 <<END
+Debian GNU/Linux $progname $pversion.
+           Copyright (C) 1997 Manoj Srivastava.
+This is free software; see the Artistic Licence for copying
+conditions.  There is NO warranty.  
+
+Usage: $progname  [options]
+Options: 
+ -h                This help
+ -N <name>         Name of this gnus version (default $GNUSNAME)
+ -f <file.tar.gz>  Downloaded tar sources (if not present, shall be acquired
+                       from $GNUS_URL)
+ -u <URL>          The URL to try (default $GNUS_URL)
+ -d <dir>          The Lisp directory where to unpack things. (default
+                       $LISPDIR)
+ -n                Noaction.
+ -r <root cmd>     Root command
+ -nC               
+END
+}
+
+
+# get an argument file name
+# Command line
+while [ $# != 0 ]; do
+    value="`echo x\"$1\" | sed -e 's/^x-.//'`"
+    case "$1" in
+        -h)  usageversion; exit 0 ;;
+        -N*) GNUSNAME="$value" ;;
+        -f*) TEMPFILE="$value" ;;
+        -u*) GNUS_URL="$value" ;;
+        -d*) LISPDIR="$value" ;;
+        -V*) opt_version="$value" ;;
+        -W*) opt_workdir="$value" ;;
+        -d)  opt_DEBUG=1 ;;
+        -n)  action='echo' ;;
+        -r*) rootcommand="$value" ;;
+        -nC*) customcopy="NO" ;;
+        -*)  usageversion; exit 1  ;;
+        *)   usageversion; exit 1  ;;
+    esac
+    shift
+done
+
+if [ "X$TEMPFILE" = "X" ]; then
+    echo >&2 "Getting the file from upstream sources"
+
+    rm -f ${GNUS_TARFILE}
+    TEMPFILE=`tempfile -n ${GNUS_TARFILE}`
+
+    eval "$action wget --dot-style=binary -cO $TEMPFILE $GNUS_URL "
+fi
+
+eval "$action cd $LISPDIR "
+
+echo >&2 "Removing old versions"
+eval "$action $rootcommand rm -rf gnus $GNUSNAME-* "
+
+
+echo >&2 "Unpacking the new version."
+eval "$action $rootcommand tar zvvfx $TEMPFILE "
+eval "$action $rootcommand ln -s $GNUSNAME-* gnus "
+
+VERSION=$(echo $GNUSNAME-* | sed -e "s/$GNUSNAME-//g");
+DATE=$(date -R)
+
+eval "$action cd gnus "
+if [ -f $DEBIAN_FILES ]; then
+    eval "$action $rootcommand tar zfx $DEBIAN_FILES; "
+    eval "$action $rootcommand perl -pli~ -e s/XXXX/$VERSION/ debian/changelog;"
+    eval "$action $rootcommand rm -f debian/changelog~";
+fi
+
+# Copy the custom files as desired
+if [ "X$customcopy" = "XYES" ]; then
+    echo >&2 "Copy the custom files as desired"
+    eval "$action cp ../custom-1.9961/{cus,wid}*.el lisp"
+fi
+
+if [ -d debian ]; then
+    eval "$action $rootcommand fakeroot  ./debian/rules binary; "
+    eval "$action $rootcommand rm -rf gnus $GNUSNAME-* "
+else
+    echo >&2 "configure the new version"
+    eval "$action $rootcommand bash ./configure "
+
+
+    echo >&2 "Byte compile the new version"
+    eval "$action $rootcommand make "
+
+    echo >&2 "Move files to final destination"
+    eval "$action mv -f lisp/*.elc $DESTDIR"
+fi
+
+
+rm -f $TEMPFILE 
+
+exit 0
+
+# End program

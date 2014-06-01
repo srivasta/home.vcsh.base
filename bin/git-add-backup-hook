@@ -1,0 +1,44 @@
+#!/bin/sh -e
+
+git_hook="$(cd "$(dirname "$0")" && pwd)/$(basename "$0").post-commit"
+
+if ! [ -x "$git_hook" ]; then
+    echo "Expected '$git_hook' to exist and be executable!" 1>&2
+    exit 1
+fi
+
+function findup() {
+    pwd="`pwd`"
+    start="$pwd"
+    while [ ! "$pwd" -ef .. ]; do
+        [ -e "$1" ] && echo -n "$pwd" && return
+        cd .. || return 1
+        pwd="`pwd`"
+    done
+
+    echo "Could not find '$1' in any sub-directory of '$start'" 1>&2
+    return 1
+}
+
+ws_root=$(findup packageInfo)
+
+[ -d "$ws_root" ] || exit 1
+
+for git_root in "$ws_root"/src/*/.git; do
+    hook="$git_root/hooks/post-commit"
+    if [ -e "$hook" ]; then
+        hook_next=
+        if [ "$(readlink "$hook")" -eq "$git_hook" ]; then
+            continue
+        else
+            hook_next="$hook.next"
+            while [ -e "$hook_next" ]; do
+                hook_next="$hook_next.next"
+            done
+            mv "$hook" "$hook_next"
+            echo "Moved pre-existing post-commit hook to: $hook_next" 1>&2
+        fi
+    fi
+    ln -s "$git_hook" "$hook"
+    echo "Added post-commit hook to: $hook" 1>&2
+done

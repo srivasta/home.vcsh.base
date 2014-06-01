@@ -1,0 +1,111 @@
+<% # Run as "erb structure.erb > structure.dot & neato structure.dot -Tpng -o structure.png"
+  base_path = File.expand_path(File.join(File.dirname(__FILE__), ".."))
+  require(File.join(base_path, "config/environment"))
+  Dir[File.join(base_path, "app/models/*.rb")].each { |lib| require lib }
+
+  th_format = '<td bgcolor="%s" %s><font color="white" point-size="16">%s</font></td>'
+
+  association_styles = {
+    :belongs_to => 'arrowtail=odot,color="%s"',
+    :has_and_belongs_to_many => 'dirType="both",color="%s",label="%s",constraint=false'
+  }
+
+  visited_habtm = []
+
+  models = []
+  ObjectSpace.each_object(Class) do |cls|
+    next unless cls < ActiveRecord::Base
+    name = cls.table_name
+
+    models << cls
+  end
+
+  model_colors = Hash.new do |hash, table|
+    index = (hash.size + 1)
+    model_count = models.size.to_f + 2
+    hue = index / model_count
+    value_index = (index - 1) % 3.0
+    value = [0.4, 0.6, 0.8][value_index.round]
+
+    hash[table] = ["#{hue} 0.5 #{value}", "#{hue} 1 #{value + 0.1}"]
+  end
+%>
+
+digraph G {
+  graph [
+    concentrate=true
+    overlap=orthoxy
+    splines=true
+    pack=true
+    sep=.1
+    truecolor=true
+  ]
+  node [fontname="Arial",fontsize=12,shape="plaintext"]
+  edge [
+    fontname="Arial"
+    fontsize=12
+    style="setlinewidth(3)"
+    arrowsize=1.5
+    tailclip=false
+    headclip=false
+  ]
+
+  <%
+    for cls in models do
+      name = cls.table_name
+      color = model_colors[name.to_s][0]
+
+      columns = cls.column_names.sort_by do |column|
+        [column == cls.primary_key ? 0 : 1, column]
+      end
+
+      associations = cls.reflect_on_all_associations || []
+  %>
+    "<%= name %>" [label=<
+      <table>
+        <tr>
+          <%= th_format % [color, 'port="head"', name] %>
+        </tr>
+        <% for column in columns do %>
+          <tr>
+            <td port="<%= column %>"><%= column %></td>
+          </tr>
+        <% end %>
+      </table>
+    >]
+
+    <%
+      for association in associations do
+        style = association_styles[association.macro]
+
+        case association.macro
+          when :belongs_to then
+            source_name = name
+            source_port = association.options[:foreign_key] || "#{association.name}_id"
+            target_name = association.table_name
+            target_port = "head"
+            color = model_colors[target_name.to_s][1]
+            style = style % color
+          when :has_and_belongs_to_many then
+            source_name = name
+            target_name = association.options[:class_name].constantize.table_name rescue association.name
+            habtm = [source_name.to_s, target_name.to_s].sort
+            color = model_colors[target_name.to_s][1]
+
+            if visited_habtm.include?(habtm) then
+              next
+            else
+              source_port = target_port = "head"
+              style = style % [color, association.options[:join_table]]
+              visited_habtm << habtm
+            end
+          else
+            # STDERR.puts "Ignored #{association.inspect}"
+            next
+        end
+
+    %>
+      <%= source_name %>:<%= source_port %>:e -> <%= target_name %>:<%= target_port %>:w [<%= style %>]
+    <% end %>
+  <% end %>
+}

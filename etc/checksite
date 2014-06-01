@@ -1,0 +1,22 @@
+# An extract from my command file
+-b /home/srivasta/var/state/lurkftp/L.%s%d.gz
+-R 'mail -s "LurkFTP Output" srivasta' # mail reports to me
+-U # ignore moves
+-P # fork away!
+-x /lib/|/etc/|/bin/|/usr
+ftp.spambouncer.org /
+clockwork.dementia.org /angband/Source /angband/Help-Info /angband/Help-Help
+-x /gnus-bug.*|gnus-old|ding|old/
+quimby.gnus.org /pub/gnus
+-x /diffs/
+psg.com /pub/vm
+-x /extras|fonts|screen-shots|mpeg|images|Changes-since-v2.2.0|.betas/diffs/|old
+ftp.xemacs.org /pub/xemacs/emacs-w3/
+-x /.private|Historic|people|v1.0|v1.1|v1.2|v1.3|SillySounds/|testing/old/
+ftp.kernel.org /pub/linux/kernel
+ftp.lysator.liu.se /pub/sgml/
+-x /GNUinfo|MailingListArchives|Manuals|MicrosPorts|etc|gnu-0.2|jacal|lost+found|lpf|maintain|old|scm|standards|tasks/|FILES.*
+ftp.gnu.org /pub/gnu 
+ftp.fsn.hu /pub/CDROM-Images/debian-unofficial/woody
+ftp.fsn.hu /pub/CDROM-Images/debian-unofficial/sid
+

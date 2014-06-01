@@ -1,0 +1,118 @@
+#!/usr/bin/perl
+
+# RCBugger - find RC bugs for programs on your system
+# Copyright (C) 2003 Anthony DeRobertis
+# 
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+# 
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+# 
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+
+use LWP::Simple;
+use strict;
+
+my $url = "http://bugs.debian.org/release-critical/debian/all.html";
+my $cache = "rc-alert.html";
+
+sub mirror_buglist();
+sub read_packages();
+sub handle_bugs();
+sub print_if_relevant(%);
+
+my %package_list;
+
+mirror_buglist();
+read_packages();
+handle_bugs();
+
+
+sub mirror_buglist() {
+	my $http_res_code = mirror($url, $cache);
+	if (is_error($http_res_code)) {
+		print STDERR "Could not fetch $url!\n";
+		if ( ! -r "$cache" || ! -s "$cache" ) {
+			print STDERR "... and there is no cached information. Bailing out.\n";
+			exit(1);
+		} else {
+			print STDERR "Using cached information. Results may be out of date.\n";
+		}
+	}
+}
+
+sub read_packages() {
+	open PIPE, "-|", "dpkg --get-selections";
+	while (defined(my $line = <PIPE>)) {
+		if ($line =~ /^(\S+)\s+install$/) {
+			$package_list{$1} = undef;	# could put the version here and do real work, but oh well.
+		}
+	}
+	close PIPE;
+}
+
+sub human_flags($) {
+	my $mrf = shift;	# machine readable flags, for those of you wondering
+	my @hrf = ();		# considering above, should be obvious
+	$mrf =~ /^\[P/ and push(@hrf, "pending");
+	$mrf =~ /^\[.\+/ and push(@hrf, "patch");
+	$mrf =~ /^\[..H/ and push(@hrf, "help [wanted]");
+	$mrf =~ /^\[...M/ and push(@hrf, "moreinfo [needed]");
+	$mrf =~ /^\[....R/ and push(@hrf, "unreproducible");
+	$mrf =~ /^\[.....S/ and push(@hrf, "security");
+	$mrf =~ /^\[......U/ and push(@hrf, "upstream");
+
+	# XXX: these are documented, but not actually used on the page (2003/03/08)
+	$mrf =~ /^\[.......O/ and push(@hrf, "oldstable");
+	$mrf =~ /^\[........S/ and push(@hrf, "stable");
+	$mrf =~ /^\[.........T/ and push(@hrf, "testing");
+	$mrf =~ /^\[..........U/ and push(@hrf, "unstable");
+
+	if (@hrf) {
+		return "$mrf (" . join(", ", @hrf) . ')';
+	} else {
+		return "$mrf (none)";
+	}
+}
+
+sub print_if_relevant(%) {
+	my %args = @_;
+	if (exists($package_list{$args{pkg}})) {
+		# yep, relevant
+		print "Package: $args{pkg}\n"
+		     ."Bug:     $args{num}\n"
+			 ."Name:    $args{name}\n"
+			 ."Flags:   " . human_flags($args{tags}) . "\n\n";
+	}
+}
+
+sub handle_bugs() {
+	open BUGS, "<", $cache or die "Could not read $cache: $!";
+	
+	my $found_bugs_start;
+	my $current_package;
+	
+	while (defined(my $line = <BUGS>)) {
+		if ($line =~ /^<pre>$/) {
+			$found_bugs_start = 1;
+			next;
+		} elsif (!defined($found_bugs_start)) {
+			next;
+		} elsif ($line =~ /^<a name="([^"]+)"><strong>Package:<\/strong> <A HREF="[^"]+">/) {
+			$current_package = $1;
+		} elsif ($line =~ /^<A NAME="(\d+)">  <A HREF="[^"]+">\d+<\/A> (\[[^\]]+\]) (.+)$/) {
+			print_if_relevant(pkg => $current_package, num => $1, tags => $2, name => $3);
+		}
+		
+	}
+
+	close BUGS or die "Could not close $cache: $!";
+}
+

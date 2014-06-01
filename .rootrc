@@ -1,0 +1,29 @@
+#Last edited:Mon Oct 31 13:22:41 1994 by srivasta (Manoj Srivastava) on belthil.pilgrim.umass.edu
+export default_dir='/home/srivasta'
+export default_bashdir=$default_dir/etc/shells/bash
+
+export WHO='root'
+if [ "$TERM" = "xterm" -o "$TERM" = "xterm-debian" ]; then
+    my_resolution=$(xdpyinfo | perl -nle 'm/resolution:\s+(\d+)x\d+/ && print $1');
+    if test $my_resolution -lt 100; then
+	perl -e 'printf "%c]50;%s%c", 27, "7x13bold", 7 ; '
+    else
+	perl -e 'printf "%c]50;%s%c", 27, "9x15bold", 7 ; '
+    fi
+fi
+if test -f $default_dir/etc/shells/bash/bash_profile ; then
+    . $default_dir/etc/shells/bash/bash_profile;
+else 
+    if test -f ~/.bash_profile ; then
+	. ~/.bash_profile
+    fi
+fi
+
+# perl -e 'printf "%c]50;%s%c", 27, "-dec-terminal-medium-*-normal-gs-14-*-*-*-*-*-iso8859-*", 7 ; '
+
+# Local Variables: *
+# mode: fundamental *
+# comment-start: "#" *
+# tab-width: 2 *
+# End: *
+

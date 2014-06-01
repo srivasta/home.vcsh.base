@@ -1,0 +1,55 @@
+#! /bin/zsh
+#                               -*- Mode: Sh -*- 
+# mproc --- 
+# Author           : Manoj Srivastava ( srivasta@glaurung.internal.golden-gryphon.com ) 
+# Created On       : Thu Jan 25 16:50:29 2007
+# Created On Node  : glaurung.internal.golden-gryphon.com
+# Last Modified By : Manoj Srivastava
+# Last Modified On : Thu Jan 25 21:49:22 2007
+# Last Machine Used: glaurung.internal.golden-gryphon.com
+# Update Count     : 33
+# Status           : Unknown, Use with caution!
+# HISTORY          : 
+# Description      : 
+# 
+# 
+setopt extendedglob
+progname="`basename \"$0\"`"
+set -e
+withecho () {
+    echo " $@" >&2
+    "$@"
+}
+action='withecho'
+#action='echo'
+
+#  This is where we finc the ham and spam files
+SPOOLDIR=$HOME/var/spool/mail
+if [[ ! -d "$SPOOLDIR" ]]; then
+    echo >&2 Could not find "$SPOOLDIR"
+    exit 2
+fi
+cd $SPOOLDIR
+# Make sure we have the mail processing command around
+if ! whence mail-process >/dev/null ; then
+    echo >&2 "Could not find mail-process"
+    exit 3
+fi
+
+# glob qualifier command; selects non-empty files
+nonzero() {  [[ -s $REPLY ]] }
+
+#  Heavy globbing magic. () mean create an array (can't create a
+#  scalar of file names in one step), of ham followe by an optional
+#  (that's what the # means, 0 or more) digit, N sets the NULL_GLOB
+#  for the current expression, . means a regular file, and +nonzero
+#  runs the command onzero above, which is true only for non empty
+#  files.
+HAM=( ham[[:digit:]]#(N.+nonzero) )
+SPAM=( junk[[:digit:]]#(N.+nonzero) )
+if [ -n "$HAM" ]; then
+    $action mail-process --ham $HAM 
+fi
+if [ -n "$SPAM" ]; then
+    $action mail-process --spam $SPAM 
+fi

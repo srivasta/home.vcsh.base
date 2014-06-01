@@ -1,0 +1,117 @@
+#!/usr/bin/perl -w
+#                              -*- Mode: Cperl -*- 
+# dir --- 
+
+# $Id: DIR.pl,v 1.3 2004/02/06 15:18:13 mtsouk Exp mtsouk $
+#
+# Please note that this is alpha code
+#
+# Command line arguments
+# program_name.pl directory
+
+use strict;
+my $directory="";
+my $COMMAND="";
+my %DIRECTORIES=();
+die <<Thanatos unless @ARGV;
+usage:
+   $0 directory
+Thanatos
+if ( @ARGV != 1 )
+{
+   die <<Thanatos
+      usage info:
+         Please use exactly 1 argument!
+Thanatos
+}
+# Get the file name
+($directory) = @ARGV;
+$COMMAND = "/usr/bin/find $directory -type d | ";
+open (INPUT, "$COMMAND")
+   || die "Cannot run the ".$COMMAND.": $!\n";
+#
+# The reason for putting OUTPUT in front of the
+# directory name is that we
+# can have . as directory name
+#
+my $OUTPUT="OUTPUT$directory.dot";
+$OUTPUT =~ s/\//-/g;
+open (OUTPUT, "> $OUTPUT")
+   || die "Cannot create output file $OUTPUT: $!\n";
+print OUTPUT <<START;
+digraph G
+{
+   rotate=90;
+   nodesep=.05;
+   node[height=.05, shape=record, fontsize=5];
+START
+# Make nodes for the command line argument directory
+my @split = split /\//, $directory;
+my $key="";
+my $prev='';
+for $key (@split)
+{
+    my $KEY=$key;
+    $key =~ s/[^[a-zA-Z0-9]/_/g;
+    $key = $prev."_".$key;
+    $prev = $key;
+    print OUTPUT "\t".$prev;
+    print OUTPUT " [shape=box, label=\"$KEY\"];";
+    print OUTPUT "\n";
+}
+my $lastpart = "";
+while (<INPUT>)
+{
+   chomp;
+   my $orig=$_;
+   # Get the right label
+   my @split = split /\//, $_;
+   $lastpart = pop @split;
+   $_ =~ s/\//_/g;
+   #
+   # The _ is accepted as a valid node character
+   # . , + - are not accepted
+   #
+   $_ =~ s/[^a-zA-Z0-9]/_/g;
+   @split = split /_/, $_;
+   print OUTPUT "\t_".$_;
+   print OUTPUT " [shape=box,label=\"$lastpart\"];";
+   print OUTPUT "\n";
+   $DIRECTORIES{$orig}=0;
+}
+my $subdir="";
+my %TEMP=();
+foreach $key ( sort keys %DIRECTORIES )
+{
+   print "KEY: $key\n";
+   my @split = split /\//, $key;
+   my $prev = undef;
+   for $subdir (@split)
+   {
+      $subdir =~ s/[^a-zA-Z0-9_]/_/g;
+      my $next = $prev."_".$subdir if $prev;
+      $next = "_" . $subdir unless $prev;
+      # print "NEXT: $next\n";
+      if ( !defined($prev) )
+      {
+         $prev = $next;
+         next;
+      }
+      my $val = "$prev->$next;\n";
+      # print "VAL: $val\n";
+      if ( !defined( $TEMP{$val} ))
+      {
+         print OUTPUT "$prev->$next;\n";
+      }
+      $prev .= "_".$subdir;
+      $TEMP{$val}=1;
+   }
+}
+close(INPUT)
+   || die "Cannot close input file: $!\n";
+print OUTPUT <<END;
+}
+END
+close (OUTPUT)
+   || die "Cannot close file: $!\n";
+exit 0;

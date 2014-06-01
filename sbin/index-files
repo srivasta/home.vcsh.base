@@ -1,0 +1,11 @@
+#! /bin/bash
+
+set -e 
+
+if command -v ra-index 2>&1 >/dev/null; then
+    ra-index ~/var/spool/index/articles ~/var/spool/news/save/ \
+	     ~/var/spool/news/cache -e active
+    ra-index  ~/var/spool/index/outgoing/ ~/var/spool/news/archive/
+    ra-index  ~/var/spool/index/mailing-lists/ ~/var/spool/news/nnml/ \
+	      -e active
+fi

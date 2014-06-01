@@ -1,0 +1,103 @@
+#! /bin/zsh -f
+
+#details aboout gitweb
+gitweb_prefix='http://git.debian.org/?p=users/srivasta/debian'
+
+
+# Details of the most recent commit
+commit_full_hash=$(git log -1 --pretty=format:%H)
+commit_hash=$(git log -1 --pretty=format:%h)
+commit_author_name=$(git log -1 --pretty=format:%an)
+commit_author_email=$(git log -1 --pretty=format:%ae)
+commit_date=$(git log -1 --pretty=format:%cD)
+commit_subject=$(git log -1 --pretty=format:%s)
+commit_changes=$(git log -1 --pretty=format:%b)
+
+#details about the repo. This is a KLUDGE!!!!!!!!!!!!!
+repo_name=$(git config --get remote.origin.url 2>/dev/null); 
+if [[ -n "${repo_name}" ]] && [[ -n "${commit_full_hash}" ]]; then
+    repo_name=${repo_name##*/};
+    commitdiff_url="${gitweb_prefix}/${repo_name};a=commitdiff;h=${commit_full_hash}"
+    commit_message=<<EOF
+
+	For details, see the full commit diff at:
+ $commitdiff_url
+
+EOF
+else
+    commit_message=''
+fi
+    
+escaped_message=$(git log -1 --pretty=format:%b | \
+   sed -e 's,&,&amp;,g' -e 's,<,&lt;,g' -e 's,>,&gt;,g')
+
+# Details about this branch:
+refname=$(git symbolic-ref HEAD 2>/dev/null)
+refname=${refname##refs/heads/}
+merged=$(git rev-parse HEAD)
+rev=$(git describe ${merged} 2>/dev/null)
+
+
+
+sendmail_wrapper()
+{
+    if [ $# -ne 3 ] ; then
+        echo 1>&2 "sendmail usage error: need 3 arguments"
+        exit 1
+    fi
+    if [ "$1" != "-s" ] ; then
+        echo 1>&2 "sendmail usage error: first argument must be -s"
+        exit 1
+    fi
+    (
+        cat <<EOF
+To: $3
+From: Manoj Srivastava <srivasta@debian.org>
+Message-ID: <${rev}@${commit_full_hash}>
+BCC: srivasta@debian.org
+Subject: $2
+X-PTS-Approved: Yes
+
+EOF
+        cat
+    )  | /usr/sbin/sendmail -oi -t
+}
+# replace the call to  /usr/sbin/sendmail -oi -t by: tee /tmp/junk
+
+echo "$commit_changes" | perl -e '
+my %Seen;
+{
+  local $/; # enable localized slurp mode
+  my $string=<>;
+  while ( $string =~ m/closes:\s*(?:bug)?\#\s*\d+(?:,\s*(?:bug)?\#\s*\d+)*/gsmi ) {
+    my $match="$&";
+    while ($match =~ /(\d+)/g) {
+      $Seen{$1}++;
+    }
+  }
+}
+for (sort keys %Seen) { print "$_\n"; }
+' | while read bug; do
+        echo |         \
+            sendmail_wrapper -s "[$commit_hash] Fix for Bug#$bug committed to git" \
+            $bug@bugs.debian.org,control@bugs.debian.org<<EOF
+tags $bug + pending
+thanks
+Hi,
+
+     The following change has been committed for this bug by
+ $commit_author_name <$commit_author_email> on the branch 
+ $refname at $commit_date.
+
+     The fix will be in the next upload. 
+=========================================================================
+$commit_subject
+
+$commit_changes
+=========================================================================
+
+EOF
+            
+done
+
+

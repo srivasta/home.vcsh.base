@@ -1,0 +1,16 @@
+#
+#  MIME types and programs that process those types
+#
+#  Using template from /etc/mailcap
+#  
+
+# application/pdf; evince '%s'; test=test -n "$DISPLAY" ; nametemplate=%s.pdf
+application/pdf; acroread '%s'; test=test -n "$DISPLAY" ; nametemplate=%s.pdf
+#application/pdf; /usr/bin/gv '%s'; test=test -n "$DISPLAY"
+#text/html; /usr/bin/w3m -dump -T text/html '%s'; copiousoutput; description=HTML Text; nametemplate=%s.html
+text/html; firefox '%s'; copiousoutput; description=HTML Text; nametemplate=%s.html
+application/vnd.intu.qfx; /home/srivasta/.cxoffice/win2000/desktopdata/cxassoc/Scripts/cxoffice-b3c3a621-0351-4eb0-a06c-f9b4980aa0f1:application_vnd.intu.qfx '%s'; test=test -n "$DISPLAY"
+application/x-crossover-qfx; /home/srivasta/.cxoffice/win2000/desktopdata/cxassoc/Scripts/cxoffice-b3c3a621-0351-4eb0-a06c-f9b4980aa0f1:application_vnd.intu.qfx '%s'; test=test -n "$DISPLAY"
+application/x-crossover-qdt; /home/srivasta/.cxoffice/win2000/desktopdata/cxassoc/Scripts/cxoffice-b3c3a621-0351-4eb0-a06c-f9b4980aa0f1:application_x-crossover-qdt '%s'; test=test -n "$DISPLAY"
+application/x-crossover-qdb; /home/srivasta/.cxoffice/win2000/desktopdata/cxassoc/Scripts/cxoffice-b3c3a621-0351-4eb0-a06c-f9b4980aa0f1:application_x-crossover-qdb '%s'; test=test -n "$DISPLAY"
+application/x-crossover-qdf; /home/srivasta/.cxoffice/win2000/desktopdata/cxassoc/Scripts/cxoffice-b3c3a621-0351-4eb0-a06c-f9b4980aa0f1:application_x-crossover-qdf '%s'; test=test -n "$DISPLAY"

@@ -1,0 +1,246 @@
+#! /usr/bin/perl
+#                              -*- Mode: Cperl -*- 
+# list-grey.pl --- 
+# Author           : Manoj Srivastava ( srivasta@glaurung.internal.golden-gryphon.com ) 
+# Created On       : Tue Oct 31 00:14:50 2006
+# Created On Node  : glaurung.internal.golden-gryphon.com
+# Last Modified By : Manoj Srivastava
+# Last Modified On : Tue Oct 31 23:43:37 2006
+# Last Machine Used: glaurung.internal.golden-gryphon.com
+# Update Count     : 84
+# Status           : Unknown, Use with caution!
+# HISTORY          : 
+# Description      : 
+# 
+# arch-tag: b701fa3d-764a-4024-9ae2-6467f2bb0656
+# 
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; version 2 of the License.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+#
+#  
+#  
+#  
+
+($main::MYNAME     = $main::0) =~ s|.*/||;
+$main::Author      = "Manoj Srivastava";
+$main::AuthorMail  = "srivasta\@debian.org";
+
+=head1 NAME
+
+list-grey - Pull out grey messages from lists of folders
+
+=cut
+
+use strict;
+require 5.002;
+use Getopt::Long;
+
+use Mail::Box::Manager;
+
+
+=head1 SYNOPSIS
+
+ usage: list-grey [options] mail-folder [mail-folder ...]
+
+=cut
+
+=head1 DESCRIPTION
+
+The idea here is simple: go through the mbox files mentioned on the
+command line, look at each message, and if the X-SA_Orig headers does
+not exist, or it exsts and the two scores are different in sign
+(C<scoreA * ScoreB < 0>), then write that mail to the grey folder.
+
+=head2 Normal Usage
+
+The tested use case is one where the mail folders parsed are mbox
+foder, and the output file is in the current directory, and is called
+grey.mbox
+
+=cut
+
+=head1 OPTIONS
+
+=over 3
+
+=item B<--help> Print out a usage message.
+
+=cut
+
+my $help_opt = '';
+
+my %option_ctl = 
+  (
+   "help"                => \$help_opt,
+  );
+
+
+my $usage = <<"EOUSAGE";
+usage: $main::MYNAME [options] mail-folder [mail-folder ...]
+    where the options are:
+   --help              This message
+ $main::Author <$main::AuthorMail>
+EOUSAGE
+
+
+sub main() {
+  my $ret;
+
+  $ret = GetOptions(%option_ctl);
+  if(!$ret) {
+    print "use --help to display command line syntax help.\n" ;
+    exit 1;
+  }
+  if ($help_opt){
+    print "$usage";
+    exit 0;
+  }
+
+  #  Get a new mail manager
+  my $mgr    = Mail::Box::Manager->new;
+  my $outbox = $mgr->open(access => 'a', create => 1,
+                          folder => "grey.mbox", type => 'mbox');
+#   my $noscorebox = $mgr->open(access => 'a', create => 1,
+#                               folder => "noscore.mbox", type => 'mbox');
+  # Process folders given on the command line
+  for my $name (@ARGV) {
+    my $folder = $mgr->open(folder => "$name");
+    #warn "DEBUG: $folder\n";
+    # Iterate over the messages.
+    foreach my $msg ($folder->messages) {
+      # warn "DEBUG", $msg->messageId, "\n";
+      my $head = $msg->head;
+      my $crm_status  = $head->get('X-CRM114-Status');
+      if ($crm_status =~ m/UNSURE/ig) {
+        $msg->copyTo($outbox,share => 1);
+        next;
+      }
+      my $spam_values = $head->get('X-SA-Orig');
+       if (! $spam_values) {
+         warn "Found a mail with no scores.\n" if $main::DEBUG;
+#          my $spam_score = $head->get('X-Spam-Score');
+#          if (! $spam_score) {
+#            #warn "DEBUG: $folder\n";
+#            #warn "DEBUG: spam_score not defined\n";
+#            $msg->copyTo($noscorebox,share => 1);
+#          }
+#          else {
+#            my $score  = int $spam_score;
+#            if ($score > -100) {
+#              #warn "DEBUG: $folder\n";
+#              #warn "DEBUG: spam_score = $spam_score\n";
+#              $msg->copyTo($noscorebox,share => 1);
+#            }
+#          }
+       }
+       else {
+         $spam_values =~ s/\s+//g;
+         my ($sa, $crm) = split (",", $spam_values);
+         if ($sa == 0 || $crm == 0) {
+           #warn "DEBUG: $folder\n";
+           #warn "DEBUG: sa=$sa, crm=$crm, one is 0\n";
+           $msg->copyTo($outbox,share => 1);
+         }
+         else {
+           my $mismatch = ($sa/abs($sa)) * ($crm/abs($crm));
+           if ($mismatch < 0) {
+             #warn "DEBUG: $folder\n";
+             #warn "DEBUG: sa=$sa, crm=$crm, mismatch\n";
+             $msg->copyTo($outbox,share => 1);
+           }
+         }
+      }
+    }                           # all messages
+  }
+  $outbox->close;
+  exit 0;
+}
+## Now just call main
+&main();
+
+
+=head1 RETURN VALUE
+
+The program returns 0 on succesful completion, and non-zero exit
+values otherwise.
+
+=cut
+
+=head1 ERRORS
+
+=cut
+
+=head1 DIAGNOSTICS
+
+=cut
+
+=head1 EXAMPLES
+
+=cut
+
+=head1 ENVIRONMENT
+
+=cut
+
+=head1 FILES
+
+=cut
+
+=head1 CAVEATS
+
+=cut
+
+=head1 BUGS
+
+None known so far.
+
+=cut
+
+=head1 RESTRICTIONS
+
+The input folders are meant to be mbox folders
+
+=cut
+
+=head1 NOTES
+
+=cut
+
+=head1 SEE ALSO
+
+=cut
+
+=head1  COPYRIGHT AND LICENSE
+
+Copyright 2006 by Manoj Srivastava.
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; version 2 of the License.
+
+This program is distributed in the hope that it will be useful, but
+WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+General Public License for more details.
+
+=cut
+
+
+=head1 AUTHOR
+
+Manoj Srivastava C<srivasta\@debian.org>
+
+=cut
+
+exit 0;
+__END__

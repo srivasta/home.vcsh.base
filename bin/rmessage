@@ -1,0 +1,36 @@
+#!/bin/sh
+# rmessage : watchfor someone to log in and give message
+
+trap "rm -f /tmp/junk.$$; exit 0" 1 2 14 15
+
+PATH=/bin:/usr/bin:/usr/ucb
+
+case $# in 
+	0) echo "usage : rmessage recipient " 1>&2; exit 1;;
+	*) recipient=$1; shift ;;
+esac
+
+master=`finger $USER | awk '/Login name: / { for ( i= 7; i <= NF; i++)
+				printf "%s ",  $i
+				printf "\n"  }'`
+until who | egrep "$recipient" >> /dev/null
+do
+	sleep 60
+done
+
+terminal=/dev/`ls -l /dev |egrep "$recipient" | awk '{ (i=NF); print $i}'`
+
+echo "" > $terminal
+echo "$@" > $terminal
+echo "    $master" > $terminal
+echo "" > $terminal
+echo "will repeat in a min." > $terminal
+
+sleep 45
+
+echo "" > $terminal
+echo $@ > $terminal
+echo "    $master" > $terminal
+echo "" > $terminal
+exit 0
+

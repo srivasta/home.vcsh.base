@@ -1,0 +1,179 @@
+#!/usr/bin/perl 
+# -*- Mode: Perl -*- 
+# cln --- 
+# Author           : Manoj Srivastava ( srivasta@nazgul.ecs.umass.edu ) 
+# Created On       : Wed Sep 11 14:01:42 1991
+# Created On Node  : nazgul.ecs.umass.edu
+# Last Modified By : Manoj Srivastava
+# Last Modified On : Wed Sep 11 16:38:52 1991
+# Last Machine Used: nazgul.ecs.umass.edu
+# Update Count     : 26
+# Status           : Unknown, Use with caution!
+# HISTORY          : 
+# Description      : 
+# 
+# cln : clean the directory hierarchialy of temporary files.
+require "find.pl";		# This contains the perl find programme
+chop($program=`basename $0`);
+
+$usage = "$program [-[natom]] [dir]\noptions:\n -n        : test only, don't unlink\n";
+$usage .= " -v        : verbose output\n -l        : long format output\n";
+$usage .= " -a        : clean out temp directory\n -m        : unlink misc junk\n";
+$usage .= " -t        : unlink TeX temp files\n -o        : unlink object files\n";
+
+# Parse command line arguments.
+while ($_ = $ARGV[0], /^-/)
+{
+    shift;
+    $opts = $_;
+    $noexec = 1 if /n/ ;
+    $tmpdir = 1 if /a/;
+    $tex  = 1 if /t/;
+    $obj  = 1 if /o/;
+    $verbose = 1 if /v/;
+    $long = 1 if /l/;
+    $misc = 1 if /m/;
+    m/[^-navltom]/ && die "$usage";
+}
+# Set up the pattern for files to be unlinked
+$pattern  =  '/~$/ || /#$/ || /^core$/ || /\/core$/';
+$pattern .=  '|| /\.aux$/ || /\.dvi$/ || /\.lis$/ || /\.log$/'
+    if $tex;
+$pattern .=  '|| /junk[^\/]*/ || /temp[^\/]*/ || /tmp[^\/]*/ || /\.bak$/'
+    if $misc;
+$pattern .=  '|| /a\.out$/ || /\.o$/' if $obj;
+# Set the directory to the temp dir; and cchange the pattern to
+# include all files we have write permission to.
+
+$ARGV[0] = "/tmp/" if $tmpdir;
+$pattern = '-w $_ && /.*/' if $tmpdir;
+
+# Note that -n implies -v unless -V or -t was given
+if ($noexec && !$long ) {$verbose = 1;}
+if ($noexec || $long || $verbose) {$totals = 1;}
+
+# If we need to be very verbose, then set the translation arrays
+if ($long) {
+    @rwx = ('---','--x','-w-','-wx','r--','r-x','rw-','rwx');
+    @moname = (Jan,Feb,Mar,Apr,May,Jun,Jul,Aug,Sep,Oct,Nov,Dec);
+    while (($name, $pw, $uid) = getpwent) {
+        $user{$uid} = $name unless $user{$uid};
+    }
+    while (($name, $pw, $gid) = getgrent) {
+        $group{$gid} = $name unless $group{$gid};
+    }
+}
+
+# run in the background, unless some output was expected. (under bash,
+# a process writing to the screen from the background does not do
+# carriage return.)
+if ($noexec || $long || $verbose || ! ($procid = fork))
+{
+
+# Now do the find, which calls &wanted for each file
+    if ($#ARGV == -1) { &find('.'); }
+    elsif ($#ARGV == 0) { &find($ARGV[0]); }
+    else { die "$usage"; }
+    
+# Print the totals if requested
+    if ($totals) {
+	printf "$program: $numfiles files ($numbytes bytes) %sdeleted\n",
+	($noexec ? "would be " : "");
+    }
+}
+# Goodbye
+exit;
+# wanted: Called for each file. Filename is in $_, directory name in
+# $dir (and we are switched to that directory), and full pathname in $name.
+sub wanted {
+    ($dev,$ino,$mode,$nlink,$uid,$gid,$rdev,$size,
+      $atime,$mtime,$ctime,$blksize,$blocks) = lstat($_);
+    -f _ || return;
+    if (eval($pattern))
+    {
+        if ($verbose)
+	{
+            print "$name\n";
+        }
+        if ($totals || $long)
+	{
+            if ($long)
+	    {
+                &ls;
+            }
+            if ($totals)
+	    {
+                $numfiles += 1;
+                $numbytes += $size;
+            }
+        }
+        if (!$noexec)
+	{
+            unlink($_);
+        }
+    }
+}
+# ls: Generated automatically by find2perl for the -ls option
+sub ls {
+    ($dev,$ino,$mode,$nlink,$uid,$gid,$rdev,$sizemm,
+      $atime,$mtime,$ctime,$blksize,$blocks) = lstat(_);
+
+    $pname = $name;
+
+    if (defined $blocks) {
+        $blocks = int(($blocks + 1) / 2);
+    }
+    else {
+        $blocks = int(($size + 1023) / 1024);
+    }
+
+    if    (-f _) { $perms = '-'; }
+    elsif (-d _) { $perms = 'd'; }
+    elsif (-c _) { $perms = 'c'; $sizemm = &sizemm; }
+    elsif (-b _) { $perms = 'b'; $sizemm = &sizemm; }
+    elsif (-p _) { $perms = 'p'; }
+    elsif (-S _) { $perms = 's'; }
+    else         { $perms = 'l'; $pname .= ' -> ' . readlink($_); }
+
+    $tmpmode = $mode;
+    $tmp = $rwx[$tmpmode & 7];
+    $tmpmode >>= 3;
+    $tmp = $rwx[$tmpmode & 7] . $tmp;
+    $tmpmode >>= 3;
+    $tmp = $rwx[$tmpmode & 7] . $tmp;
+    substr($tmp,2,1) =~ tr/-x/Ss/ if -u _;
+    substr($tmp,5,1) =~ tr/-x/Ss/ if -g _;
+    substr($tmp,8,1) =~ tr/-x/Tt/ if -k _;
+    $perms .= $tmp;
+
+    $user = $user{$uid} || $uid;
+    $group = $group{$gid} || $gid;
+
+    ($sec,$min,$hour,$mday,$mon,$year) = localtime($mtime);
+    $moname = $moname[$mon];
+    if (-M _ > 365.25 / 2) {
+        $timeyear = '19' . $year;
+    }
+    else {
+        $timeyear = sprintf("%02d:%02d", $hour, $min);
+    }
+
+    printf "%5lu %4ld %-10s %2d %-8s %-8s %8s %s %2d %5s %s\n",
+            $ino,
+                 $blocks,
+                      $perms,
+                            $nlink,
+                                $user,
+                                     $group,
+                                          $sizemm,
+                                              $moname,
+                                                 $mday,
+                                                     $timeyear,
+                                                         $pname;
+    1;
+}
+
+sub sizemm {
+    sprintf("%3d, %3d", ($rdev >> 8) & 255, $rdev & 255);
+}
+

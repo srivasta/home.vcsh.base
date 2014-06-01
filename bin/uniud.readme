@@ -1,0 +1,43 @@
+Silly program to turn ASCII text upside-down, generating output using
+unicode. Note that you need Good unicode support, as the program is
+not afraid to use combining characters.
+
+Changelog:
+  0.13 - initial public release. Font is not complete yet. Some of the
+         comments are in dutch.
+  0.14 - at least all characters have an upside-down mapping now, although
+         some are still ugly.
+         The source is now almost straight ascii, but there is still UTF8
+         in some comments.
+         Workaround for Term::Size utf8 bug.
+         Handle Term::Size failures more graceful.
+
+Install the "uniud" program somewhere in your $PATH. This needs at least
+perl 5.8, and optionally the Term::Size module (but not necessarily).
+
+Usage:
+    uniud [options] [--] [text...]
+
+    If text on the command line is given, turns that text upside-down.
+    Otherwise, it works as a filter, turning STDIN to STDOUT.
+
+  Options:
+    --linelength=##
+            (-l) Set the linelength
+
+    --autolength
+            (-a) Automatically set the linelength based on terminal width.
+            (uses Term::Size)
+
+    --rightmargin
+            (-r) Essentially "right-aligns" the text, keeping the right
+            margin (start of the line) in the same column. This reads the
+            entire text before producing output, also reversing the order of
+            lines (otherwise, lines are output in the same order as they are
+            entered). If no linelength or autolength is given, automatically
+            assumes the linelength is equal to the longest line.
+
+    --help  This text.
+
+    --version
+            Show program version.

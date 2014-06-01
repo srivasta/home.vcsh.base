@@ -1,0 +1,60 @@
+:
+: US holiday file. Copy to ~/.holiday
+: Use this as a starting point, some holidays are missing, and some listed
+: here are largely irrelevant.
+:
+: Author: Ron Harichandran <harichan@cee.msu.edu>
+:
+small "New Year" weekend on 1/1
+small "M.L.King B'day" weekend on third monday in Jan
+small "President's Day" weekend on third monday in Feb
+small "Easter" weekend on easter
+small "Memorial Day" weekend on last monday in May
+small "Independence Day" weekend on Jul 4
+small "Labor Day" weekend on first monday in Sep
+small "Columbus Day" weekend on second monday in Oct
+small "Veteran's Day" weekend on Nov 11
+small "Thanksgiving" weekend on fourth thursday in Nov
+small "Christmas" weekend on Dec 25
+
+:
+: more holidays from Jeff Buhrt <jeff@amesbvap.ci.in.ameritech.com>
+:
+small "Groundhog's Day" on Feb 2
+small "Lincoln's Birthday" on Feb 12
+small "St. Valentine's Day" on Feb 14
+small "Susan B. Anthony's Day" on Feb 15
+small "St. Patrick's Day" on Mar 17
+small "Arbor Day" on last friday in Apr
+small "Loyalty Day" on May 1
+small "Mother's Day" on second sunday in May
+small "Armed Forces Day" on third saturday in May
+: small "Victoria Day" on monday in May and 18 thru 24
+small "Memorial Day" weekend on last monday in May
+small "Father's Day" on third sunday in Jun
+small "Citizenship Day" on Sep 17
+small "Child Health Day" on first monday in Sep
+small "World Poetry Day" on Oct 15
+small "United Nations' Day" on Oct 24
+small "Halloween" on Oct 31
+small "Bill of Rights' Day" on Dec 15
+small "Wright Brothers' Day" on Dec 17
+
+: Easter related
+small "Ash Wednesday" on easter minus 46 days
+small "Pentecost" weekend on easter plus 49 days
+small "Ascension" on easter plus 40 days
+small "Trinity" on easter plus 46 day
+small "Corpus Christi" on easter plus 53 days
+
+: Seasons (are these really hardcoded or calculated?)
+"Spring Begins" on Mar 22
+"Summer Begins" on Jun 22
+"Fall Begins" on Sep 22
+"Winter Begins" on Dec 22
+
+: Birthdays
+"Mike Shardo's birthday" on Jan 8
+"Surya's birthday" on  Jan 27
+"Danny Shardo's  birthday"  on  Feb 28
+"Jack Shardo's  birthday" on Mar 1

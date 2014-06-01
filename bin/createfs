@@ -1,0 +1,1339 @@
+#!/bin/bash
+
+#                               -*- Mode: Sh -*-
+# creatfs ---
+# Author           : Manoj Srivastava ( srivasta@glaurung.internal.golden-gryphon.com )
+# Created On       : Wed Sep 15 14:21:22 2004
+# Created On Node  : glaurung.internal.golden-gryphon.com
+# Last Modified By : Manoj Srivastava
+# Last Modified On : Sat Feb 14 14:33:57 2009
+# Last Machine Used: anzu.internal.golden-gryphon.com
+# Update Count     : 226
+# Status           : Unknown, Use with caution!
+# HISTORY          :
+# Description      :
+#
+# http://www.diogogomes.com/2012/07/13/debootstrap-kvm-image/
+# for hints on using qemu-nbd and grub
+#
+# ,----[ createfs.conf ]
+# | conf_mirrorsite=http://http.us.debian.org/debian
+# | ## if using apt-proxy, use this instead
+# | #conf_mirrorsite=http://127.0.0.1:9999/debian
+# |
+# | conf_kvm_new_user=jdoe
+# | conf_kvm_new_user_gecos="John Doe,229,,,"
+# |
+# | conf_kvm_do_min_build=YES
+# | conf_kvm_do_remote_build=YES
+# | conf_kvm_authorized_key_file=authorized_keys
+# | conf_kvm_satisfydeps_file=satisfydeps
+# | conf_kvm_remote_build_script=remote_build
+# |
+# | #Use local approx mirror inside
+# | conf_apt_sources='
+# | deb http://192.168.3.2:19999/debian sid main contrib non-free
+# | deb http://192.168.3.2:19999/deb-natasha sid main contrib non-free
+# | '
+# |
+# | conf_kvm_do_selinux=YES
+# | conf_policy_type=strict
+# | # Once you have created a KVM and loaded a policy, you can use that
+# | # To seed the next KVM machine, saves a reboot/relabel step
+# | conf_selinux_policy=policy.21
+# | conf_file_contexts=file_contexts
+# | conf_home_contexts=file_contexts.homedirs
+# | conf_local_policies=localStrict.pp
+# `----
+
+set -e
+
+progname="$(basename \"$0\")"
+pversion='$Revision: 1.58 $'
+
+mydir="$(dirname $0)"
+#
+unset -v   LANGUAGE
+unset -v   LC_ALL
+unset -v   LC_PAPER
+unset -v   LC_ADDRESS
+unset -v   LC_MONETARY
+unset -v   LC_NUMERIC
+unset -v   LC_TELEPHONE
+unset -v   LC_TYPE
+unset -v   LC_MESSAGES
+unset -v   LC_COLLATE
+unset -v   LC_IDENTIFICATION
+unset -v   LC_MEASUREMENT
+unset -v   LC_CTYPE
+unset -v   LC_TIME
+unset -v   LC_NAME
+unset -v   LANG
+export SHELL=/bin/bash
+export LANG=C
+export LC_ALL=C
+export PATH=$HOME/sbin:$HOME/bin:/usr/local/bin:/bin:/usr/bin:/sbin:/usr/sbin
+
+
+# Long term variables, which may be set in the config file or the
+# environment:
+# DEBUG rootdir workdir (if all original sources are kept in one dir)
+#
+#
+action='withecho'
+DEBUG=${DEBUG:-0}
+
+# Working directory for all output
+
+WORKING_DIR=$(pwd); export WORKING_DIR
+
+LC_ALL=C
+export LC_ALL
+
+DEBOOTSTRAP_EXCLUDE="hwclock,syslinux,at,exim,mailx,libstdc++2.10-glibc2.2,mbr,setserial,fdutils,info,ipchains,iptables,lilo,pcmcia-cs,ppp,pppoe,pppoeconf,pppconfig,wget,telnet,cron,logrotate,exim4,exim4-base,exim4-config,exim4-daemon-light,pciutils,modconf,tasksel"
+DEBOOTSTRAP_INCLUDE=
+
+setq() {
+    # Variable Value Doc string
+    if [ "x$2" = "x" ]; then
+        echo >&2 "$progname: Unable to determine $3"
+        exit 1;
+    else
+        if [ ! "x$Verbose" = "x" ]; then
+            echo "$progname: $3 is $2";
+        fi
+        eval "$1=\"\$2\"";
+    fi
+}
+
+withecho () {
+    echo " $@" >&2
+    "$@"
+}
+
+
+usageversion () {
+    cat >&2 <<END
+Debian GNU/Linux $progname $pversion.
+           Copyright (C) 2004,2005,2006,2007 Manoj Srivastava.
+This is free software; see the GNU General Public Licence for copying
+conditions.  There is NO warranty.
+
+Usage: $progname  [options]
+Options:
+  -h           print this message
+  -n           "Dry-run" mode - No action taken, only print commands.
+END
+}
+
+
+
+# Configuration
+
+# This function sets configuration variables from various sources,
+# alowing the command line to override the environment, which in turn
+# over rides the configuration file, which supercedes the built in
+# default value. It is called by read_cfg below to actually set the
+# variables.
+combine_values() {
+
+    # Command line, env variable, config file, or default
+    # Image sixe in MB. Defaults to 10GB
+    if [ ! "x$opt_image_size" = "x" ]; then
+        IMAGE_SIZE="$opt_image_size";
+    elif [ ! "x$CFS_IMAGE_SIZE" = "x" ]; then
+        IMAGE_SIZE="$CFS_IMAGE_SIZE";
+    elif [ ! "x$conf_image_size" = "x" ]; then
+        IMAGE_SIZE="$conf_image_size";
+    else
+        IMAGE_SIZE=$((10 * 1024))
+    fi
+    if [ $IMAGE_SIZE -lt 130 ]; then
+        echo 'Size must be at least 130 megabytes (Debian unstable takes 100)' >&2
+        exit 1
+    fi
+
+    if [ ! "x$opt_mirrorsite" = "x" ]; then
+        MIRRORSITE="$opt_mirrorsite";
+    elif [ ! "x$CFS_MIRRORSITE" = "x" ]; then
+        MIRRORSITE="$CFS_MIRRORSITE";
+    elif [ ! "x$conf_mirrorsite" = "x" ]; then
+        MIRRORSITE="$conf_mirrorsite";
+    else
+        : echo nop;
+    fi
+    if [ ! "x$opt_apt_sources" = "x" ]; then
+        APT_SOURCES="$opt_apt_sources";
+    elif [ ! "x$CFS_APT_SOURCES" = "x" ]; then
+        APT_SOURCES="$CFS_APT_SOURCES";
+    elif [ ! "x$conf_apt_sources" = "x" ]; then
+        APT_SOURCES="$conf_apt_sources";
+    else
+        : echo nop;
+    fi
+    if [ ! "x$opt_my_ip" = "x" ]; then
+        MY_IP="$opt_my_ip";
+    elif [ ! "x$CFS_MY_IP" = "x" ]; then
+        MY_IP="$CFS_MY_IP";
+    elif [ ! "x$conf_my_ip" = "x" ]; then
+        MY_IP="$conf_my_ip";
+    else
+        : echo nop;
+    fi
+    if [ ! "x$opt_kvm_broadcast" = "x" ]; then
+        KVM_BROADCAST="$opt_kvm_broadcast";
+    elif [ ! "x$CFS_KVM_BROADCAST" = "x" ]; then
+        KVM_BROADCAST="$CFS_KVM_BROADCAST";
+    elif [ ! "x$conf_kvm_broadcast" = "x" ]; then
+        KVM_BROADCAST="$conf_kvm_broadcast";
+    else
+        : echo nop;
+    fi
+    if [ ! "x$opt_kvm_netmask" = "x" ]; then
+        KVM_NETMASK="$opt_kvm_netmask";
+    elif [ ! "x$CFS_KVM_NETMASK" = "x" ]; then
+        KVM_NETMASK="$CFS_KVM_NETMASK";
+    elif [ ! "x$conf_kvm_netmask" = "x" ]; then
+        KVM_NETMASK="$conf_kvm_netmask";
+    else
+        : echo nop;
+    fi
+    if [ ! "x$opt_kvm_mailname" = "x" ]; then
+        KVM_MAILNAME="$opt_kvm_mailname";
+    elif [ ! "x$CFS_KVM_MAILNAME" = "x" ]; then
+        KVM_MAILNAME="$CFS_KVM_MAILNAME";
+    elif [ ! "x$conf_kvm_mailname" = "x" ]; then
+        KVM_MAILNAME="$conf_kvm_mailname";
+    else
+        : echo nop;
+    fi
+    if [ ! "x$opt_kvm_domain" = "x" ]; then
+        KVM_DOMAIN="$opt_kvm_domain";
+    elif [ ! "x$CFS_KVM_DOMAIN" = "x" ]; then
+        KVM_DOMAIN="$CFS_KVM_DOMAIN";
+    elif [ ! "x$conf_kvm_domain" = "x" ]; then
+        KVM_DOMAIN="$conf_kvm_domain";
+    else
+        : echo nop;
+    fi
+    if [ ! "x$opt_kvm_ns1" = "x" ]; then
+        KVM_NS1="$opt_kvm_ns1";
+    elif [ ! "x$CFS_KVM_NS1" = "x" ]; then
+        KVM_NS1="$CFS_KVM_NS1";
+    elif [ ! "x$conf_kvm_ns1" = "x" ]; then
+        KVM_NS1="$conf_kvm_ns1";
+    else
+        : echo nop;
+    fi
+    if [ ! "x$opt_kvm_ns2" = "x" ]; then
+        KVM_NS2="$opt_kvm_ns2";
+    elif [ ! "x$CFS_KVM_NS2" = "x" ]; then
+        KVM_NS2="$CFS_KVM_NS2";
+    elif [ ! "x$conf_kvm_ns2" = "x" ]; then
+        KVM_NS2="$conf_kvm_ns2";
+    else
+        : echo nop;
+    fi
+    if [ ! "x$opt_kvm_ns3" = "x" ]; then
+        KVM_NS3="$opt_kvm_ns3";
+    elif [ ! "x$CFS_KVM_NS3" = "x" ]; then
+        KVM_NS3="$CFS_KVM_NS3";
+    elif [ ! "x$conf_kvm_ns3" = "x" ]; then
+        KVM_NS3="$conf_kvm_ns3";
+    else
+        : echo nop;
+    fi
+    if [ ! "x$opt_kvm_ip" = "x" ]; then
+        KVM_IP="$opt_kvm_ip";
+    elif [ ! "x$CFS_KVM_IP" = "x" ]; then
+        KVM_IP="$CFS_KVM_IP";
+    elif [ ! "x$conf_kvm_ip" = "x" ]; then
+        KVM_IP="$conf_kvm_ip";
+    else
+        : echo nop;
+    fi
+    if [ ! "x$opt_kvm_network" = "x" ]; then
+        KVM_NETWORK="$opt_kvm_network";
+    elif [ ! "x$CFS_KVM_NETWORK" = "x" ]; then
+        KVM_NETWORK="$CFS_KVM_NETWORK";
+    elif [ ! "x$conf_kvm_network" = "x" ]; then
+        KVM_NETWORK="$conf_kvm_network";
+    else
+        : echo nop;
+    fi
+    if [ ! "x$opt_my_eth0" = "x" ]; then
+        MY_ETH0="$opt_my_eth0";
+    elif [ ! "x$CFS_MY_ETH0" = "x" ]; then
+        MY_ETH0="$CFS_MY_ETH0";
+    elif [ ! "x$conf_my_eth0" = "x" ]; then
+        MY_ETH0="$conf_my_eth0";
+    else
+        : echo nop;
+    fi
+    if [ ! "x$opt_kvm_deb_release" = "x" ]; then
+        KVM_DEB_RELEASE="$opt_kvm_deb_release";
+    elif [ ! "x$CFS_KVM_DEB_RELEASE" = "x" ]; then
+        KVM_DEB_RELEASE="$CFS_KVM_DEB_RELEASE";
+    elif [ ! "x$conf_kvm_deb_release" = "x" ]; then
+        KVM_DEB_RELEASE="$conf_kvm_deb_release";
+    else
+        : echo nop;
+    fi
+    if [ ! "x$opt_kvm_do_selinux" = "x" ]; then
+        KVM_DO_SELINUX="$opt_kvm_do_selinux";
+    elif [ ! "x$CFS_KVM_DO_SELINUX" = "x" ]; then
+        KVM_DO_SELINUX="$CFS_KVM_DO_SELINUX";
+    elif [ ! "x$conf_kvm_do_selinux" = "x" ]; then
+        KVM_DO_SELINUX="$conf_kvm_do_selinux";
+    else
+        : echo nop;
+    fi
+    if [ ! "x$opt_kvm_do_postfix" = "x" ]; then
+        KVM_DO_POSTFIX="$opt_kvm_do_postfix";
+    elif [ ! "x$CFS_KVM_DO_POSTFIX" = "x" ]; then
+        KVM_DO_POSTFIX="$CFS_KVM_DO_POSTFIX";
+    elif [ ! "x$conf_kvm_do_postfix" = "x" ]; then
+        KVM_DO_POSTFIX="$conf_kvm_do_postfix";
+    else
+        : echo nop;
+    fi
+
+    if [ ! "x$opt_kvm_do_min_build" = "x" ]; then
+        KVM_DO_MIN_BUILD="$opt_kvm_do_min_build";
+    elif [ ! "x$CFS_KVM_DO_MIN_BUILD" = "x" ]; then
+        KVM_DO_MIN_BUILD="$CFS_KVM_DO_MIN_BUILD";
+    elif [ ! "x$conf_kvm_do_min_build" = "x" ]; then
+        KVM_DO_MIN_BUILD="$conf_kvm_do_min_build";
+    else
+        : echo nop;
+    fi
+
+    if [ ! "x$opt_kvm_do_remote_build" = "x" ]; then
+        KVM_DO_REMOTE_BUILD="$opt_kvm_remote_min_build";
+    elif [ ! "x$CFS_KVM_DO_REMOTE_BUILD" = "x" ]; then
+        KVM_DO_REMOTE_BUILD="$CFS_KVM_DO_REMOTE_BUILD";
+    elif [ ! "x$conf_kvm_do_remote_build" = "x" ]; then
+        KVM_DO_REMOTE_BUILD="$conf_kvm_do_remote_build";
+    else
+        : echo nop;
+    fi
+
+    if [ ! "x$opt_kvm_authorized_key_file" = "x" ]; then
+        KVM_AUTHORIZED_KEY_FILE="$opt_kvm_authorized_key_file";
+    elif [ ! "x$CFS_KVM_AUTHORIZED_KEY_FILE" = "x" ]; then
+        KVM_AUTHORIZED_KEY_FILE="$CFS_KVM_AUTHORIZED_KEY_FILE";
+    elif [ ! "x$conf_kvm_authorized_key_file" = "x" ]; then
+        KVM_AUTHORIZED_KEY_FILE="$conf_kvm_authorized_key_file";
+    else
+        : echo nop;
+    fi
+
+    if [ ! "x$opt_kvm_satisfydeps_file" = "x" ]; then
+        KVM_SATISFYDEPS_FILE="$opt_kvm_satisfydeps_file";
+    elif [ ! "x$CFS_KVM_SATISFYDEPS_FILE" = "x" ]; then
+        KVM_SATISFYDEPS_FILE="$CFS_KVM_SATISFYDEPS_FILE";
+    elif [ ! "x$conf_kvm_satisfydeps_file" = "x" ]; then
+        KVM_SATISFYDEPS_FILE="$conf_kvm_satisfydeps_file";
+    else
+        : echo nop;
+    fi
+    if [ ! "x$opt_kvm_remote_build_script" = "x" ]; then
+        KVM_REMOTE_BUILD_SCRIPT="$opt_kvm_remote_build_script";
+    elif [ ! "x$CFS_KVM_REMOTE_BUILD_SCRIPT" = "x" ]; then
+        KVM_REMOTE_BUILD_SCRIPT="$CFS_KVM_REMOTE_BUILD_SCRIPT";
+    elif [ ! "x$conf_kvm_remote_build_script" = "x" ]; then
+        KVM_REMOTE_BUILD_SCRIPT="$conf_kvm_remote_build_script";
+    else
+        : echo nop;
+    fi
+
+
+
+    if [ ! "x$opt_kvm_image" = "x" ]; then
+        KVM_IMAGE="$opt_kvm_image";
+    elif [ ! "x$CFS_KVM_IMAGE" = "x" ]; then
+        KVM_IMAGE="$CFS_KVM_IMAGE";
+    elif [ ! "x$conf_kvm_image" = "x" ]; then
+        KVM_IMAGE="$conf_kvm_image";
+    else
+        : echo nop;
+    fi
+    if [ ! "x$opt_kvm_mount_tmpfs" = "x" ]; then
+        KVM_MOUNT_TMPFS="$opt_kvm_mount_tmpfs";
+    elif [ ! "x$CFS_KVM_MOUNT_TMPFS" = "x" ]; then
+        KVM_MOUNT_TMPFS="$CFS_KVM_MOUNT_TMPFS";
+    elif [ ! "x$conf_kvm_mount_tmpfs" = "x" ]; then
+        KVM_MOUNT_TMPFS="$conf_kvm_mount_tmpfs";
+    else
+        : echo nop;
+    fi
+    if [ ! "x$opt_kvm_mem" = "x" ]; then
+        KVM_MEM="$opt_kvm_mem";
+    elif [ ! "x$CFS_KVM_MEM" = "x" ]; then
+        KVM_MEM="$CFS_KVM_MEM";
+    elif [ ! "x$conf_kvm_mem" = "x" ]; then
+        KVM_MEM="$conf_kvm_mem";
+    else
+        : echo nop;
+    fi
+    if [ ! "x$opt_kvm_gateway" = "x" ]; then
+        KVM_GATEWAY="$opt_kvm_gateway";
+    elif [ ! "x$CFS_KVM_GATEWAY" = "x" ]; then
+        KVM_GATEWAY="$CFS_KVM_GATEWAY";
+    elif [ ! "x$conf_kvm_gateway" = "x" ]; then
+        KVM_GATEWAY="$conf_kvm_gateway";
+    else
+        : echo nop;
+    fi
+    if [ ! "x$opt_kvm_hostname" = "x" ]; then
+        KVM_HOSTNAME="$opt_kvm_hostname";
+    elif [ ! "x$CFS_KVM_HOSTNAME" = "x" ]; then
+        KVM_HOSTNAME="$CFS_KVM_HOSTNAME";
+    elif [ ! "x$conf_kvm_hostname" = "x" ]; then
+        KVM_HOSTNAME="$conf_kvm_hostname";
+    else
+        : echo nop;
+    fi
+    if [ ! "x$opt_kvm_new_user" = "x" ]; then
+        KVM_NEW_USER="$opt_kvm_new_user";
+    elif [ ! "x$CFS_NEW_USER" = "x" ]; then
+        KVM_NEW_USER="$CFS_NEW_USER";
+    elif [ ! "x$conf_kvm_new_user" = "x" ]; then
+        KVM_NEW_USER="$conf_kvm_new_user";
+    else
+        KVM_NEW_USER="guest";
+    fi
+    if [ ! "x$opt_kvm_new_user_gecos" = "x" ]; then
+        KVM_NEW_USER_GECOS="$opt_kvm_new_user_gecos";
+    elif [ ! "x$CFS_NEW_USER_GECOS" = "x" ]; then
+        KVM_NEW_USER_GECOS="$CFS_NEW_USER_GECOS";
+    elif [ ! "x$conf_kvm_new_user_gecos" = "x" ]; then
+        KVM_NEW_USER_GECOS="$conf_kvm_new_user_gecos";
+    else
+        KVM_NEW_USER_GECOS="Guest User,,,";
+    fi
+    if [ ! "x$opt_policy_type" = "x" ]; then
+        KVM_POLICY_TYPE="$opt_policy_type";
+    elif [ ! "x$CFS_POLICY_TYPE" = "x" ]; then
+        KVM_POLICY_TYPE="$CFS_POLICY_TYPE";
+    elif [ ! "x$conf_policy_type" = "x" ]; then
+        KVM_POLICY_TYPE="$conf_policy_type";
+    else
+        KVM_POLICY_TYPE="strict";
+    fi
+    if [ ! "x$opt_file_contexts" = "x" ]; then
+        KVM_FILE_CONTEXTS="$opt_file_contexts";
+    elif [ ! "x$CFS_FILE_CONTEXTS" = "x" ]; then
+        KVM_FILE_CONTEXTS="$CFS_FILE_CONTEXTS";
+    elif [ ! "x$conf_file_contexts" = "x" ]; then
+        KVM_FILE_CONTEXTS="$conf_file_contexts";
+    else
+        KVM_FILE_CONTEXTS="./file_contexts";
+    fi
+    if [ ! "x$opt_home_contexts" = "x" ]; then
+        KVM_HOME_CONTEXTS="$opt_home_contexts";
+    elif [ ! "x$CFS_HOME_CONTEXTS" = "x" ]; then
+        KVM_HOME_CONTEXTS="$CFS_HOME_CONTEXTS";
+    elif [ ! "x$conf_home_contexts" = "x" ]; then
+        KVM_HOME_CONTEXTS="$conf_home_contexts";
+    else
+        KVM_HOME_CONTEXTS="./file_contexts.homedir";
+    fi
+    if [ ! "x$opt_selinux_policy" = "x" ]; then
+        KVM_SELINUX_POLICY="$opt_selinux_policy";
+    elif [ ! "x$CFS_SELINUX_POLICY" = "x" ]; then
+        KVM_SELINUX_POLICY="$CFS_SELINUX_POLICY";
+    elif [ ! "x$conf_selinux_policy" = "x" ]; then
+        KVM_SELINUX_POLICY="$conf_selinux_policy";
+    else
+        : echo nop;
+    fi
+    if [ ! "x$opt_local_policies" = "x" ]; then
+        KVM_LOCAL_POLICIES="$opt_local_policies";
+    elif [ ! "x$CFS_LOCAL_POLICIES" = "x" ]; then
+        KVM_LOCAL_POLICIES="$CFS_LOCAL_POLICIES";
+    elif [ ! "x$conf_local_policies" = "x" ]; then
+        KVM_LOCAL_POLICIES="$conf_local_policies";
+    else
+        : echo nop;
+    fi
+
+}
+
+# This function reads the configuration parameters from the various
+# sources, and calls the combine_values function above to set the
+# configuration variables.
+read_cfg() {
+    echo >&2 "read_cfg";
+    # The site given to debootstrap to download initial packages
+    # from. Also added to the initial sources.list.
+    #MIRRORSITE=http://mirror.peer1.net/debian/
+    MIRRORSITE=http://192.168.0.21:3142/mirror.peer1.net/debian/
+    #MIRRORSITE=http://http.us.debian.org/debian
+    #MIRRORSITE=http://192.168.0.21/debian
+    #MIRRORSITE=http://glaurung.internal.golden-gryphon.com:9999/debian
+    #MIRRORSITE=http://glaurung.internal.golden-gryphon.com/debian
+    #MIRRORSITE=file:///var/spool/mirror/debian
+    #MIRRORSITE=http://192.168.1.10:9999/debian
+
+    MY_IP=
+    MY_ETH0=
+
+    KVM_MAILNAME=
+    KVM_DOMAIN=
+
+    KVM_NS1=
+    KVM_NS2=
+    KVM_NS3=
+
+
+    KVM_IP=192.168.1.41
+    KVM_NETWORK=
+    KVM_BROADCAST=
+    KVM_NETMASK=
+    KVM_GATEWAY=
+
+    KVM_DEB_RELEASE=sid
+
+    KVM_IMAGE="build"
+    KVM_MOUNT_TMPFS="no"
+    KVM_MEM=256M
+
+    KVM_HOSTNAME=cinder
+
+    KVM_NEW_USER=
+    KVM_NEW_USER_GECOS=
+    KVM_POLICY_TYPE=
+
+    # opt_image_size
+    # opt_mirrorsite
+    # opt_apt_sources
+    # opt_my_ip
+    # opt_kvm_broadcast
+    # opt_kvm_netmask
+    # opt_kvm_mailname
+    # opt_kvm_domain
+    # opt_kvm_ns1
+    # opt_kvm_ns2
+    # opt_kvm_ns3
+    # opt_kvm_ip
+    # opt_kvm_network
+    # opt_my_eth0
+    # opt_kvm_deb_release
+    # opt_kvm_do_selinux
+    # opt_kvm_do_postfix
+    # opt_kvm_do_min_build
+    # opt_kvm_do_remote_build
+    # opt_kvm_authorized_key_file
+    # opt_kvm_satisfydeps_file
+    # opt_kvm_remote_build_script
+    # opt_kvm_image
+    # opt_kvm_mount_tmpfs
+    # opt_kvm_mem
+    # opt_kvm_gateway
+    # opt_kvm_hostname
+    # opt_kvm_new_user
+    # opt_kvm_new_user_gecos
+    # opt_policy_type
+    # opt_file_contexts
+    # opt_home_contexts
+    # opt_selinux_policy
+    # opt_local_policies
+
+    # Command line
+    TEMP=$(getopt -a -s bash -o h -n 'createfs' -- "$@")
+    if [ $? != 0 ] ; then echo "Terminating..." >&2 ; exit 1 ; fi
+
+    # Note the quotes around `$TEMP': they are essential!
+    eval set -- "$TEMP"
+
+    while true ; do
+        case "$1" in
+            -h)    usageversion; exit 0  ; shift   ;;
+            --)      shift ; break ;;
+            *) echo >&2 "Internal error!($1)"
+                usageversion; exit 1           ;;
+        esac
+    done
+    # Load site defaults and over rides.
+    if [ -f /etc/createfs.conf ]; then
+        . /etc/createfs.conf
+    fi
+
+    # Load user defaults and over rides.
+    if [ -f ./createfs.conf ]; then
+        . ./createfs.conf
+    elif [ -f ~/.createfs.conf ]; then
+        . ~/.createfs.conf
+    fi
+
+    combine_values;
+
+# Check for a device called br0, and then for all configured network devices
+    DEVICES=$(ifconfig | sed 's/ .*//' | egrep -v '^lo|^ *$')
+    for dev in br0 $DEVICES; do
+        if ifconfig $dev | grep UP >& /dev/null ; then
+	    if [ -z "$MY_IP" ]; then
+	        setq MY_IP $(ifconfig $dev | \
+		    perl -nle 'm/inet addr:(\d+\.\d+\.\d+\.\d+)/m && print $1;') "gateway"
+	    fi
+
+	    if [ -z "$KVM_NETMASK" ]; then
+	        setq KVM_NETMASK $(ifconfig $dev | \
+		    perl -nle 'm/Mask:(\d+\.\d+\.\d+\.\d+)/m && print $1;') "Netmask"
+
+	    fi
+
+	    if [ -z "$KVM_BROADCAST" ]; then
+	        setq KVM_BROADCAST $(ifconfig $dev | \
+		    perl -nle 'm/Bcast:(\d+\.\d+\.\d+\.\d+)/m && print $1;') "broadcast"
+	    fi
+
+	    if [ -z "$KVM_NETWORK" ]; then
+	        setq KVM_NETWORK $(route -n | grep $dev | grep -v ^0.0.0.0 | awk '{print $1;}' | head -n 1) "network"
+	    fi
+
+
+	    break;
+        fi
+    done
+
+    if [ -z "$KVM_GATEWAY" ]; then
+       setq  KVM_GATEWAY $MY_IP "gw"
+    fi
+
+    if [ -z "$KVM_MAILNAME" ]; then
+        setq KVM_MAILNAME $(cat /etc/mailname) "mailname"
+    fi
+    if [ -z "$KVM_DOMAIN" ]; then
+        setq KVM_DOMAIN $(dnsdomainname) "domain name"
+    fi
+
+    if [ -z "$KVM_NETWORK" ]; then
+        setq KVM_NETWORK $(echo ${MY_IP} | perl -ple 's/\.[0-9]+$/.0/')A "alternate netowrk"
+    fi
+
+    if [ -z "$KVM_BROADCAST" ]; then
+        setq KVM_BROADCAST 255.255.255.0 "default broadcast"
+    fi
+
+
+    if [ -z "$KVM_NS1" ]; then
+        eval $(perl -e 'while(<>){chomp;next if m/^nameserver\s+127.0.0.1/;next unless m/^nameserver\s+(\S+)/;$N{++$i}=$1;};for (sort keys %N){print "export KVM_NS$_=$N{$_}\n";}' /etc/resolv.conf)
+    fi
+
+
+    MY_ETH0=tuntap,,,$MY_IP
+
+    OTHERMIRROR="deb http://security.debian.org stable/updates main contrib non-free
+deb http://http.us.debian.org/debian $KVM_DEB_RELEASE  main contrib non-free
+"
+
+    # Read the configuration file
+    if [ -f $HOME/.creatfsrc ]; then
+        . $HOME/.creatfsrc
+    fi
+
+}
+TMP_DIR="$(mktemp -d /tmp/mount.XXXXXX)" || \
+        { echo >&2 "Failed to create temporary directory"; exit 1; }
+
+cleanup () {
+    echo >&2 "=============================================="
+    echo >&2 "Cleaning up $TMP_DIR mounted on $DISK"
+    test -d $TMP_DIR && chroot    $TMP_DIR umount /proc/ /sys/ /dev/ /boot/ || true
+    test -d $TMP_DIR && umount -d $TMP_DIR || true;
+    umount $TMP_DIR || true;
+    $action qemu-nbd -d $DISK || true;
+    echo >&2 "Cleaning up $TMP_DIR mounted on $DISK done"
+    echo >&2 "=============================================="
+}
+
+fail() {
+    echo >&2 "=============================================="
+    clean_debian || true
+    echo >&2 "FAILED: $1"
+    echo >&2 "=============================================="
+    exit 1
+}
+
+#
+# Set up the root_fs
+#  Here we create a sparse 1GB partition, create an ext3 file system
+#  on that sparse partition. Since the FS is sparse, the disk usage is
+#  initially small, and the actual size of the file grows as required.
+#
+initiate_image () {
+    echo >&2 "=============================================="
+    echo >&2 "initiate_image: Creating a Sparse File system"
+    HEADS=16
+    SECTORS=63
+    # 512 bytes in a sector: cancel the 512 with one of the 1024s...
+    CYLINDERS=$(( $IMAGE_SIZE * 1024 * 2 / ($HEADS * $SECTORS) ))
+    echo >&2 "       HEADS=$HEADS SECTORS=$SECTORS CYLINDERS=$CYLINDERS IMAGE_SIZE=$IMAGE_SIZE"
+
+#   if test -e ${KVM_IMAGE}; then mv -f  ${KVM_IMAGE} ${KVM_IMAGE}.old; fi
+#   $action dd if=/dev/zero of=${KVM_IMAGE}.ext2 bs=$(($SECTORS * 512)) count=1 seek=$(($CYLINDERS * $HEADS - 2))
+#   $action mke2fs -q -m1 -F ${KVM_IMAGE}.ext2
+    if test -e ${KVM_IMAGE}; then $action mv -f  ${KVM_IMAGE} ${KVM_IMAGE}.old; fi
+    $action qemu-img create -f qcow2 ${KVM_IMAGE} $(( $IMAGE_SIZE * 1024 * 1024 ))
+
+    echo >&2 " Looking for nbd device..."
+    $action modprobe nbd max_part=16 || fail "failed to load nbd module into kernel"
+    for DISK in /dev/nbd*; do
+        if qemu-nbd -c $DISK ${KVM_IMAGE}; then
+            break
+        fi
+    done
+    [ "$DISK" == "" ] && fail "no nbd device available"
+    export DISK
+
+    # Partition the disk
+    echo >&2 "Formating  $DISK"
+    $action parted $DISK mklabel msdos
+    $action parted -a optimal -- $DISK mkpart primary ext2 1 -128
+    $action parted -a optimal -- $DISK mkpart primary linux-swap -127 -1
+    $action parted $DISK set 1 boot on
+    $action parted $DISK print
+
+
+#     $action sfdisk $DISK -D -uM << EOF
+# ,512,82
+# ;
+# EOF
+     $action mkswap    ${DISK}p2 || fail "Cannot create swap"
+     $action mkfs.ext4 ${DISK}p1 || fail "cannot create / ext4"
+    echo >&2 "=============================================="
+}
+
+
+#
+# Create a dir where we can mount the root_fs, and mount it. This
+# allows us to create the initial Debian install on that file system.
+#
+mount_image () {
+    echo >&2 "=============================================="
+    echo >&2 "mount_image: Mount the file system just created"
+        #  Note: only root can do this
+    # $action mount -o loop,offset=16384 ${KVM_IMAGE}.raw $TMP_DIR
+    # $action mount -o loop ${KVM_IMAGE}.ext2 $TMP_DIR
+    $action mount ${DISK}p1 $TMP_DIR
+    $action eval $(blkid -o udev ${DISK}p1)
+    $action export UUID=$ID_FS_UUID
+    trap 'test -d $TMP_DIR && umount -d $TMP_DIR; qemu-nbd -d ${DISK};' ERR
+    echo >&2 "mount_image: done"
+    echo >&2 "=============================================="
+}
+
+
+configure_minimal_build() {
+    echo >&2 "=============================================="
+    echo >&2 "Configuring a minimal build"
+    building_addons="fakeroot,adduser,build-essential,libparse-debcontrol-perl"
+    if [ -n "$DEBOOTSTRAP_INCLUDE" ]; then
+        DEBOOTSTRAP_INCLUDE="$DEBOOTSTRAP_INCLUDE,$building_addons"
+    else
+        DEBOOTSTRAP_INCLUDE="$building_addons"
+    fi
+    echo >&2 "Configuring a minimal build .. done"
+    echo >&2 "=============================================="
+}
+
+basic_install () {
+    # Create a basic Debian install
+    echo >&2 "=============================================="
+    echo >&2 "Preparing to perform a basic install"
+
+    inc_exc=
+    inc_incl=
+    if [ -n "$DEBOOTSTRAP_EXCLUDE" ]; then
+        inc_exc="--exclude=$DEBOOTSTRAP_EXCLUDE"
+    fi
+    if [ -n "$DEBOOTSTRAP_INCLUDE" ]; then
+        inc_incl="--include=$DEBOOTSTRAP_INCLUDE"
+    fi
+
+# Perhaps --flavour=build would be useful?
+    $action debootstrap $inc_exc $inc_incl   \
+	    --verbose $KVM_DEB_RELEASE $TMP_DIR/ $MIRRORSITE || \
+               fail "cannot install $KVM_DEB_RELEASE into $DISK"
+
+    #echo >&2 "moving $TMP_DIR/lib/tls to avoid NPTL issues"
+    #if [ -d $TMP_DIR/lib/tls ]; then
+    #    $action mv $TMP_DIR/lib/tls $TMP_DIR/lib/tls.save
+    #fi
+    #echo >&2 "Removing old-style pseudo-tty's,"
+    #$action rm -f $TMP_DIR/dev/[tp]ty[abcdepqrstuvwxyz][0-9a-f];
+    echo >&2 "basic_install_done";
+    echo >&2 "=============================================="
+}
+
+setup_network () {
+    echo >&2 "=============================================="
+    echo >&2 "Setting up networking .. interfaces"
+    $action test -L $TMP_DIR/etc/network/run && rm -f $TMP_DIR/etc/network/run
+    $action test -d $TMP_DIR/etc/network/run || mkdir -p $TMP_DIR/etc/network/run
+    cat >$TMP_DIR/etc/network/interfaces<<EOF
+auto lo
+iface lo inet loopback
+
+# The first network card - this entry was created during the Debian installation
+auto eth0
+#iface eth0 inet dhcp
+
+## If you want a static interface, comment out the line above
+## and uncomment the lines below
+iface eth0 inet static
+    address $KVM_IP
+    netmask $KVM_NETMASK
+    network $KVM_NETWORK
+    broadcast $KVM_BROADCAST
+    gateway $KVM_GATEWAY
+
+EOF
+    echo >&2 "Setting up networking .. done"
+    echo >&2 "=============================================="
+}
+
+setup_name () {
+    echo >&2 "=============================================="
+    echo >&2 "Setting up name mailname .. hostname .. hosts .. resolv.conf .."
+    echo $KVM_MAILNAME  >$TMP_DIR/etc/mailname
+    echo $KVM_HOSTNAME  >$TMP_DIR/etc/hostname
+
+    echo >&2 "Setting up Nameservers: \"KVM_NS1\" \"$KVM_NS2\" \"$KVM_NS3\" \"$KVM_DOMAIN\" "
+    test -n "$KVM_NS1" && echo "nameserver $KVM_NS1" >  $TMP_DIR/etc/resolv.conf
+    test -n "$KVM_NS2" && echo "nameserver $KVM_NS2" >> $TMP_DIR/etc/resolv.conf
+    test -n "$KVM_NS3" && echo "nameserver $KVM_NS3" >> $TMP_DIR/etc/resolv.conf
+    test -n "$KVM_DOMAIN" && echo "search $KVM_DOMAIN" >> $TMP_DIR/etc/resolv.conf
+
+
+    echo "Setting up hosts file"
+    cat >$TMP_DIR/etc/hosts<<EOF
+127.0.0.1       localhost
+$KVM_IP	$KVM_HOSTNAME.$KVM_DOMAIN       $KVM_HOSTNAME
+
+# The following lines are desirable for IPv6 capable hosts
+# (added automatically by netbase upgrade)
+
+::1     ip6-localhost ip6-loopback
+fe00::0 ip6-localnet
+ff00::0 ip6-mcastprefix
+ff02::1 ip6-allnodes
+ff02::2 ip6-allrouters
+ff02::3 ip6-allhosts
+EOF
+    echo >&2 "Setting up name mailname .. hostname .. hosts .. resolv.conf .. done"
+    echo >&2 "=============================================="
+}
+
+setup_misc () {
+    echo >&2 "=============================================="
+    echo >&2 "Setting up miscellaneous files "
+
+    if [ -e $TMP_DIR/etc/init.d/setserial ]; then
+	$action mv $TMP_DIR/etc/init.d/setserial $TMP_DIR/etc/init.d/setserial.dpkg-old
+    fi
+    echo >&2 "Disable all the 'hwclock' scripts "
+    $action find $TMP_DIR/etc/rc*d -name '*hwclock*' -print0 | xargs -0r rm
+
+    echo >&2 "Fix initscripts"
+    $action perl -pli -e 's,FSCKFIX=no,FSCKFIX=yes,g' $TMP_DIR/etc/default/rcS
+
+    test   -d $TMP_DIR/etc/udev || $action mkdir -p $TMP_DIR/etc/udev
+    test ! -d $TMP_DIR/etc/udev || (echo 'no_static_dev="YES"' > $TMP_DIR/etc/udev/udev.conf)
+
+    echo >&2 "	/etc/fstab"
+    rootuuid=$(blkid -s UUID -o value "${DISK}p1")
+    swapuuid=$(blkid -s UUID -o value "${DISK}p2")
+    cat >$TMP_DIR/etc/fstab<<EOF
+UUID=$rootuuid /     ext2 defaults 0 1
+UUID=$swapuuid none  swap sw       0 0
+proc      /proc proc defaults 0 0
+v_software	/usr/local/src    9p     trans=virtio        0       0
+EOF
+
+    echo >&2 "Set hostname to base of image name."
+    basename $KVM_IMAGE > $TMP_DIR/etc/hostname
+
+    echo >&2 "Setting up miscellaneous files ... done"
+    echo >&2 "=============================================="
+}
+
+setup_aptitude() {
+    echo >&2 "=============================================="
+    echo >&2 "Configuring aptitude"
+    if [ -e key.asc ]; then
+        cp key.asc $TMP_DIR/root/
+        chroot $TMP_DIR apt-key add /root/key.asc
+    fi
+    apt-key exportall | chroot $TMP_DIR apt-key add -
+    test -d $TMP_DIR/etc/apt || mkdir -p $TMP_DIR/etc/apt
+    cat >> $TMP_DIR/etc/apt/apt.conf<<'EOF'
+APT {
+
+  Cache-Limit 16777216;
+  Default-Release "unstable";
+
+  // packages that should never considered for autoRemove
+  NeverAutoRemove  { "linux-kernel.*";  };
+
+  // Options for apt-get
+  Get
+    {
+       Show-Upgraded "true";
+       Show-Versions "true";
+       Fix-Broken    "true";
+    };
+  // consider Recommends, Suggests as important dependencies that should
+  // be installed by default
+  APT::Install-Recommends "false";
+  APT::Install-Suggests "false";
+
+  DSelect
+    {
+      Clean "auto";   // always|auto|prompt|never
+      UpdateOptions "";
+      Options "-f";
+    };
+};
+DPkg
+{
+   // Prevents daemons from getting cwd as something mountable (default)
+   Run-Directory "/";
+
+   // Build options for apt-get source --compile
+   Build-Options "-b -uc";
+
+};
+EOF
+    if [ ! "x$APT_SOURCES" = "x" ]; then
+        echo "$APT_SOURCES" > $TMP_DIR/etc/sources.list.new
+        echo "" >> $TMP_DIR/etc/apt/sources.list.new
+        if [ -e $TMP_DIR/etc/apt/sources.list ]; then
+            cat $TMP_DIR/etc/apt/sources.list >> $TMP_DIR/etc/apt/sources.list.new
+        fi
+        cp -f $TMP_DIR/etc/apt/sources.list.new $TMP_DIR/etc/apt/sources.list
+    fi
+
+    chroot $TMP_DIR apt-get update
+    echo >&2 "Configuring aptitude ... done"
+    echo >&2 "=============================================="
+}
+
+setup_satisfy () {
+    echo >&2 "=============================================="
+    echo >&2 "Configuring satisfy depencies script"
+    if [ -e "$KVM_SATISFYDEPS_FILE" ]; then
+        test -d $TMP_DIR/home/$KVM_NEW_USER/bin || \
+            $action mkdir -p $TMP_DIR/home/$KVM_NEW_USER/bin
+        $action cp $KVM_SATISFYDEPS_FILE \
+            $TMP_DIR/home/$KVM_NEW_USER/bin/
+        $action chroot $TMP_DIR chown -R $KVM_NEW_USER /home/$KVM_NEW_USER/bin
+        $action chroot $TMP_DIR chgrp -R $KVM_NEW_USER /home/$KVM_NEW_USER/bin
+        $action chmod 0755 $TMP_DIR/home/$KVM_NEW_USER/bin/$KVM_SATISFYDEPS_FILE
+    fi
+    echo >&2 "Configuring satisfy depencies script ... done"
+    echo >&2 "=============================================="
+}
+
+setup_auth_key() {
+    echo >&2 "=============================================="
+    echo >&2 "Configuring authorized keys"
+    if [ -f "$KVM_AUTHORIZED_KEY_FILE" ]; then
+        test -d $TMP_DIR/home/$KVM_NEW_USER/.ssh || \
+            $action mkdir -p $TMP_DIR/home/$KVM_NEW_USER/.ssh
+        $action chmod 0700 $TMP_DIR/home/$KVM_NEW_USER/.ssh
+        $action cp $KVM_AUTHORIZED_KEY_FILE \
+            $TMP_DIR/home/$KVM_NEW_USER/.ssh/authorized_keys
+        $action chmod 0600 $TMP_DIR/home/$KVM_NEW_USER/.ssh/authorized_keys
+        $action chroot $TMP_DIR chown -R $KVM_NEW_USER /home/$KVM_NEW_USER/.ssh
+        $action chroot $TMP_DIR chgrp -R $KVM_NEW_USER /home/$KVM_NEW_USER/.ssh
+
+        test -d $TMP_DIR/root/.ssh || \
+            $action mkdir -p $TMP_DIR/root/.ssh
+        $action chmod 0700 $TMP_DIR/root/.ssh
+        $action cp $KVM_AUTHORIZED_KEY_FILE \
+            $TMP_DIR/root/.ssh/authorized_keys
+        $action chmod 0600 $TMP_DIR/root/.ssh/authorized_keys
+        chroot $TMP_DIR chown -R root:root /root/.ssh
+    fi
+    echo >&2 "Configuring authorized keys ... done"
+    echo >&2 "=============================================="
+}
+setup_remote_build() {
+    echo >&2 "=============================================="
+    echo >&2 "Setting up remote build"
+    # Install the other packages we need for working remotely
+    remote_addons="ssh sudo openssh-blacklist openssh-blacklist-extra "
+    cat> $TMP_DIR/tmp/script<<EOF
+export DEBIAN_FRONTEND=noninteractive
+aptitude -fy install --without-recommends  $remote_addons
+/etc/init.d/ssh stop || true
+EOF
+
+    $action chroot $TMP_DIR /bin/bash /tmp/script
+    if [ -f "$KVM_REMOTE_BUILD_SCRIPT" ]; then
+        test -d $TMP_DIR/home/$KVM_NEW_USER/bin || \
+            $action mkdir -p $TMP_DIR/home/$KVM_NEW_USER/bin
+        $action cp $KVM_REMOTE_BUILD_SCRIPT \
+            $TMP_DIR/home/$KVM_NEW_USER/bin/
+        $action chroot $TMP_DIR chown -R $KVM_NEW_USER /home/$KVM_NEW_USER/bin
+        $action chroot $TMP_DIR chgrp -R $KVM_NEW_USER /home/$KVM_NEW_USER/bin
+    fi
+
+    # Run login on the serial console
+    $action perl -pli -e 's{\#(T0:23:respawn:/sbin/getty)}{$1}msx' $TMP_DIR/etc/inittab
+
+    echo >&2 "Setting up remote build ... done"
+    echo >&2 "=============================================="
+}
+
+setup_sudo() {
+    echo >&2 "=============================================="
+    echo >&2 "Setting up sudo"
+    cat >$TMP_DIR/etc/sudoers<<EOF
+# /etc/sudoers
+## Sudoers allows particular users to run various commands as
+## the root user, without needing the root password.
+##
+## Examples are provided at the bottom of the file for collections
+## of related commands, which can then be delegated out to particular
+## users or groups.
+##
+# This file MUST be edited with the 'visudo' command as root.
+#
+# See the man page for details on how to write a sudoers file.
+#
+
+Defaults        env_reset
+
+# Uncomment to allow members of group sudo to not need a password
+# %sudo ALL=NOPASSWD: ALL
+
+## Host Aliases
+## Groups of machines. You may prefer to use hostnames (perhaps using
+## wildcards for entire domains) or IP addresses instead.
+# Host alias specification
+## User Aliases
+## These aren't often necessary, as you can use regular groups
+## (ie, from files, LDAP, NIS, etc) in this file - just use %groupname
+## rather than USERALIAS
+# User alias specification
+User_Alias SYSADMIN=$KVM_NEW_USER
+User_Alias ADMINS=$KVM_NEW_USER
+
+## Command Aliases
+## These are groups of related commands...
+
+# Cmnd alias specification
+## Networking
+Cmnd_Alias NETWORKING = /sbin/route, /sbin/ifconfig, /bin/ping,          \
+                        /sbin/dhclient, /usr/bin/net, /sbin/iptables,    \
+                        /usr/bin/rfcomm, /usr/bin/wvdial, /sbin/iwconfig,\
+                        /sbin/mii-tool
+## Updating the locate database
+Cmnd_Alias LOCATE = /usr/sbin/updatedb
+
+## Storage
+Cmnd_Alias STORAGE = /sbin/fdisk, /sbin/sfdisk, /sbin/parted, \
+                     /sbin/partprobe, /bin/mount, /bin/umount
+
+
+## Delegating permissions
+Cmnd_Alias DELEGATING = /usr/sbin/visudo, /bin/chown, /bin/chmod, /bin/chgrp
+
+## Processes
+Cmnd_Alias PROCESSES = /bin/nice, /bin/kill, /usr/bin/kill, /usr/bin/killall
+
+## Drivers
+Cmnd_Alias DRIVERS = /sbin/modprobe
+
+Cmnd_Alias      DUMPS=/usr/etc/dump,/usr/etc/rdump,/usr/etc/restore,\
+                      /usr/etc/rrestore,/usr/bin/mt
+Cmnd_Alias      KILL=/usr/bin/kill
+Cmnd_Alias      PRINTING=/usr/etc/lpc,/usr/ucb/lprm
+Cmnd_Alias      SHUTDOWN=/usr/etc/shutdown
+Cmnd_Alias      HALT=/usr/etc/halt,/usr/etc/fasthalt
+Cmnd_Alias      REBOOT=/usr/etc/reboot,/usr/etc/fastboot
+Cmnd_Alias      SHELLS=/usr/bin/sh,/usr/bin/csh,/usr/bin/ksh,\
+                       /usr/local/bin/tcsh,/usr/ucb/rsh,\
+                       /usr/bin/zsh
+Cmnd_Alias      SU=/usr/bin/su
+Cmnd_Alias      VIPW=/usr/etc/vipw,/etc/vipw,/bin/passwd
+
+# Defaults specification
+
+#
+# Disable "ssh hostname sudo <cmd>", because it will show the password in clear.
+
+#         You have to run "ssh -t hostname sudo <cmd>".
+#
+Defaults    requiretty
+
+Defaults    env_reset
+Defaults    env_keep = "COLORS DISPLAY HOSTNAME HISTSIZE INPUTRC KDEDIR \
+                        LS_COLORS MAIL PS1 PS2 QTDIR USERNAME           \
+                        LANG LC_ADDRESS LC_CTYPE LC_COLLATE             \
+                        LC_IDENTIFICATION LC_MEASUREMENT LC_MESSAGES    \
+                        LC_MONETARY LC_NAME LC_NUMERIC LC_PAPER         \
+                        LC_TELEPHONE LC_TIME LC_ALL LANGUAGE LINGUAS    \
+                        _XKB_CHARSET XAUTHORITY"
+
+## Next comes the main part: which users can run what software on
+## which machines (the sudoers file can be shared between multiple
+## systems).
+## Syntax:
+##
+##      user    MACHINE=COMMANDS
+##
+## The COMMANDS section may have other options added to it.
+##
+## Allow root to run any commands anywhere
+root    ALL=(ALL)       ALL
+
+## Allows people in group wheel to run all commands
+%wheel        ALL=(ALL)       ALL
+
+## Same thing without a password
+# %wheel        ALL=(ALL)       NOPASSWD: ALL
+
+## Allows members of the users group to mount and unmount the
+## cdrom as root
+# %users  ALL=/sbin/mount /mnt/cdrom, /sbin/umount /mnt/cdrom
+
+## Allows members of the wheel group to shutdown this system
+# %wheel  localhost=/sbin/shutdown -h now
+
+#ysadmins can run anything on any machine without a password
+#SYSADMIN        ALL=NOPASSWD:ALL
+SYSADMIN ALL=(root) NOPASSWD: /usr/bin/aptitude,/bin/umount,/bin/mount
+
+
+
+EOF
+    chmod 0440 $TMP_DIR/etc/sudoers
+    echo >&2 "Setting up sudo ... done"
+    echo >&2 "=============================================="
+}
+
+
+setup_shell() {
+    echo >&2 "=============================================="
+    echo >&2 "Setting up shell"
+
+
+    cat >$TMP_DIR/root/.bashrc<<'EOF'
+# ~/.bashrc: executed by bash(1) for non-login shells.
+# see /usr/share/doc/bash/examples/startup-files (in the package bash-doc)
+# for examples
+
+# If not running interactively, don't do anything
+    [ -z "$PS1" ] && return
+
+# don't put duplicate lines in the history. See bash(1) for more options
+#export HISTCONTROL=ignoredups
+
+# check the window size after each command and, if necessary,
+# update the values of LINES and COLUMNS.
+    shopt -s checkwinsize
+
+# make less more friendly for non-text input files, see lesspipe(1)
+    [ -x /usr/bin/lesspipe ] && eval "$(lesspipe)"
+
+# set variable identifying the chroot you work in (used in the prompt below)
+    if [ -z "$debian_chroot" -a -r /etc/debian_chroot ]; then
+        debian_chroot=$(cat /etc/debian_chroot)
+    fi
+
+# set a fancy prompt (non-color, unless we know we "want" color)
+    case "$TERM" in
+        xterm-color)
+        PS1='${debian_chroot:+($debian_chroot)}\[\033[01;32m\]\u@\h\[\033[00m\]:\[\033[01;34m\]\w\[\033[00m\]\$ '
+        ;;
+        *)
+        PS1='${debian_chroot:+($debian_chroot)}\u@\h:\w\$ '
+        ;;
+    esac
+
+# Comment in the above and uncomment this below for a color prompt
+PS1='${debian_chroot:+($debian_chroot)}\[\033[01;32m\]\u@\h\[\033[00m\]:\[\033[01;34m\]\w\[\033[00m\]\$ '
+
+# If this is an xterm set the title to user@host:dir
+    case "$TERM" in
+        xterm*|rxvt*)
+        PROMPT_COMMAND='echo -ne "\033]0;${USER}@${HOSTNAME}: ${PWD/$HOME/~}\007"'
+        ;;
+        *)
+        ;;
+    esac
+
+# Alias definitions.
+# You may want to put all your additions into a separate file like
+# ~/.bash_aliases, instead of adding them here directly.
+# See /usr/share/doc/bash-doc/examples in the bash-doc package.
+
+    if [ -f ~/.bash_aliases ]; then
+        . ~/.bash_aliases
+    fi
+
+    alias d-b="dpkg-buildpackage -i'(?:^|/).*~$|(?:^|/)\.#.*$|(?:^|/)\..*\.swp$|(?:^|/),,.*(?:$|/.*$)|(?:^|/)(?:DEADJOE|\.cvsignore|\.arch-inventory|\.bzrignore|\.gitignore)$|(?:^|/)(?:CVS|RCS|\.deps|\{arch\}|\.arch-ids|\.svn|\.hg|_darcs|\.git|.gitmodules|\.shelf|_MTN|\.bzr(?:\.backup|tags)?)(?:$|/.*$)' -D -rfakeroot"
+    alias mmnt="mount -t hostfs /scratch/sandbox/staging /mnt"
+
+# Alias definitions.
+# You may want to put all your additions into a separate file like
+# ~/.bash_aliases, instead of adding them here directly.
+# See /usr/share/doc/bash-doc/examples in the bash-doc package.
+    if [ -f ~/.bash_aliases ]; then
+        . ~/.bash_aliases
+    fi
+
+    if [ "$TERM" != "dumb" ]; then
+        eval "`dircolors -b`"
+        alias ls='ls --color=auto'
+        alias dir='ls --color=auto --format=vertical'
+        alias vdir='ls --color=auto --format=long'
+        alias l='ls --color=auto -AsCF'
+        alias lt="ls --color=auto -tAsCF "
+        alias lu="ls --color=auto -uAsCF "
+        alias llx="ls --color=auto -XAsCF "
+        alias ll="ls --color=auto -Als "
+        alias llt="ls --color=auto -tAls "
+        alias llc="ls --color=auto -cAls "
+        alias llu="ls --color=auto -uAls "
+        alias lls="ls --color=auto -SAls "
+        alias llx="ls --color=auto -XAls "
+    else
+        alias l='ls -AsCF'
+        alias lt="ls -tAsCF "
+        alias lu="ls -uAsCF "
+        alias llx="ls -XAsCF "
+        alias ll="ls -Als "
+        alias llt="ls -tAls "
+        alias llc="ls -cAls "
+        alias llu="ls -uAls "
+        alias lls="ls -SAls "
+        alias llx="ls -XAls "
+    fi
+
+    alias cx="chmod ugo+x "
+    alias h='history'
+
+
+# enable programmable completion features (you don't need to enable
+# this, if it's already enabled in /etc/bash.bashrc and /etc/profile
+# sources /etc/bash.bashrc).
+    if [ -f /etc/bash_completion ]; then
+        . /etc/bash_completion
+    fi
+
+EOF
+
+        cp $TMP_DIR/root/.bashrc $TMP_DIR/etc/skel
+        chroot $TMP_DIR adduser --disabled-password --gecos "$KVM_NEW_USER_GECOS" $KVM_NEW_USER
+
+## if perl -e 'use POSIX; exit 1 if tcgetpgrp(0) != getpgrp()' < /dev/tty
+## then echo foreground
+## else echo background
+## fi
+
+        echo >&2 "Create /etc/shadow"
+        chroot $TMP_DIR pwconv
+
+        if tty -s; then
+            echo >&2 Set root passwd
+            chroot $TMP_DIR passwd<<__ROOT__
+iamroot
+iamroot
+__ROOT__
+            echo >&2 Set user passwd for $KVM_NEW_USER
+            chroot $TMP_DIR passwd $KVM_NEW_USER<<EOF
+passwd
+passwd
+EOF
+        else
+            echo >&2 'Set root password to "root"'
+            sed 's/^root:[^:]*/root:$1$aybpiIGf$cB7iFDNZvViQtQjEZ5HFQ0/' < $TMP_DIR/etc/shadow > $TMP_DIR/etc/shadow.new
+            mv $TMP_DIR/etc/shadow.new $TMP_DIR/etc/shadow
+        fi
+    echo >&2 "Setting up shell ... done"
+    echo >&2 "=============================================="
+}
+
+setup_grub() {
+    echo >&2 "=============================================="
+    echo >&2 "Configuring grub"
+    for i in /dev /dev/pts /proc /sys; do mount -B $i $TMP_DIR/$i;  done
+    remote_addons="gnupg "
+
+    DEBIAN_FRONTEND=noninteractive chroot $TMP_DIR aptitude -fy install --without-recommends  $remote_addons
+    cat <<EOF> $TMP_DIR/etc/kernel-img.conf
+do_symlinks = yes
+relative_links = yes
+do_bootloader = yes
+do_bootfloppy = no
+do_initrd = yes
+link_in_boot = no
+EOF
+#    chroot $TMP_DIR aptitude -fy install linux-image-3.2.0-2-amd64
+    DEBIAN_FRONTEND=noninteractive chroot $TMP_DIR aptitude -fy install  linux-image-amd64  grub-pc
+    $action chroot $TMP_DIR grub-install ${DISK} || echo >&2 This is known to fail
+    $action chroot $TMP_DIR update-grub
+
+    #chroot $TMP_DIR umount /proc/ /sys/ /dev/
+    for i in /dev/pts /dev /proc /sys; do umount $TMP_DIR/$i ; done
+    $action grub-install --root-directory=$TMP_DIR --modules="biosdisk part_msdos" ${DISK};
+    $action perl -pli -e "s,${DISK}p,/dev/sda,msxg;" $TMP_DIR/boot/grub/grub.cfg;
+    echo >&2 "Configuring grub ... done"
+    echo >&2 "=============================================="
+}
+
+
+
+
+final_cleanup() {
+    echo >&2 "=============================================="
+    echo >&2 " Remove packages we don't need"
+    $action chroot $TMP_DIR /usr/bin/dpkg --remove console-common console-tools console-data base-config man-db manpages
+    cleanup
+    echo >&2 " cleanup done"
+    echo >&2 "=============================================="
+}
+
+read_cfg;
+initiate_image;
+mount_image;
+
+# Configure the packages we want to install
+configure_minimal_build;
+
+# Now perform the basic install
+basic_install;
+
+
+# Various post installation configurations
+setup_name;
+setup_network;
+
+setup_misc;
+setup_shell;
+setup_aptitude;
+#chroot $TMP_DIR apt-get --force-yes -fy --without-recommends upgrade
+
+# Set up tghe machine to be a build daemon
+setup_satisfy;
+setup_remote_build
+setup_sudo
+setup_auth_key
+
+# make this bootable
+setup_grub;
+
+final_cleanup
+cd $WORKING_DIR
+
+echo >&2 "=============================================="
+echo >&2 " creating image"
+$action qemu-img create -f qcow2 -o backing_file=${KVM_IMAGE} snap
+echo all done.
+echo >&2 "=============================================="

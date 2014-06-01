@@ -1,0 +1,23 @@
+plan V1.7.2
+o	samd-wn-wus-c- 1800 300 1500 0 24 7
+O	-------------------------
+t	0 21600 2 64 220
+e	w-- 
+l	w-- 
+a	w-- 
+y	---------- 1 0 0
+P	---------- 2
+p	lpr -Pbunyan
+m	Mail -s %s srivasta
+u	srivasta        /home/srivasta//.dayplan 0  0 0 1 0 0 tiamat 0
+u	art             /users/pilgrim_staff/art 0  1 0 0 0 0 tiamat 0
+u	pilgrim         /users/pilgrim/project 0  2 0 0 0 0 tiamat 0
+3/22/1999  99:99:99  0:1:0  0:0:0  0:0:0  ---------- 2 0
+R	0 0 0 0 1
+N	My birthday
+3/22/1999  8:0:0  0:1:0  0:0:0  0:0:0  ---------- 0 0
+R	0 0 0 0 1
+N	My birthday
+4/12/1999  13:0:0  1:0:0  0:15:0  0:0:0  ---------- 0 0
+R	0 0 2 0 0
+N	GCIF account call

@@ -1,0 +1,19 @@
+#!/bin/bash
+# © 2008,2009 Elte GPL V2.1
+
+URL="$1"
+shift
+
+if [ "${URL#http://}" = "$URL" ]
+then
+    echo "usage: $0 <youtube-URL> [mplayer args ...]"
+    exit
+fi
+
+echo \"http://www.youtube.com/get_video?video_id=$(wget -q -O - "$URL" \
+                               | sed -e '/fullscreenUrl/!d'            \
+                                     -e "s/.*video_id=\([^']*\).*/\1/" \
+                                     -e 's/ /_/g'                      \
+                                     -e 's/\\\"/"/g'                   \
+                              )\"                                      \
+                  | xargs mplayer "$@"

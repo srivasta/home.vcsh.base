@@ -1,0 +1,88 @@
+#! /bin/zsh
+set -e
+
+workdir_top=/usr/local/src/debian
+pkg=$1
+
+withecho () {
+    echo " $@" >&2
+    "$@"
+}
+action='withecho'
+#action='echo'
+
+
+test -n "$pkg" || echo >&2 No package name provided
+test -n "$pkg" || exit 1
+
+if [[ ! -d "$workdir_top/$pkg" ]]; then
+    echo >&2 No working directory found for "$pkg"
+    exit 3
+fi
+
+echo cd $workdir_top/$pkg
+cd $workdir_top/$pkg
+changelog=$(find $pkg* -wholename '*/debian/changelog')
+debdir=$(dirname $changelog)
+topdir=$(dirname $debdir)
+
+version=$(LC_ALL=C dpkg-parsechangelog -l$changelog | sed -ne 's/^Version: //p' )
+non_epoch_version=$(echo -n "$version" | perl -pe 's/^\d+://')
+upstream_version=$(echo -n "$non_epoch_version" | sed  -e 's/-[^-]*$//')
+debian_version=$(echo -n $non_epoch_version |  perl -nle 'm/-([^-]*)$/ && print $1')
+
+if [[ -n "$debian_version" ]]; then
+    upstream_tarball=$workdir_top/$pkg/${pkg}_${upstream_version}.orig.tar.gz
+else
+    upstream_tarball=
+fi
+
+tag_dir ()
+{
+    echo "Processing tag_dir"
+    if [ ! -e ".git/refs/tags/debian/${non_epoch_version}" ]; then
+        $action git tag -s -m"Released version ${version}" debian/${non_epoch_version} master;
+    fi
+    $action git push origin master:master
+}
+
+tag_dir_debian ()
+{
+    echo "Processing tag_dir_debian"
+    if [ ! -e ".git/refs/tags/upstream/${upstream_version}" ]; then
+        $action git tag -s -m"[$pkg]: Released version ${version}" upstream/${upstream_version} upstream
+    fi
+    $action git push origin upstream:upstream pristine-tar:pristine-tar
+}
+
+if [[ -d "$pkg" ]]; then
+    if [[ -n "$debian_version" ]]; then
+        echo >&2 We have an unversioned source dir, and yet a debian version
+        echo >&2 "[ $debian_version ]"
+        echo >&2 This is confusing
+        exit 5
+    fi
+    echo cd "$pkg"
+    cd "$pkg"
+    tag_dir
+elif [[ -d "$pkg-$upstream_version" ]]; then
+    if [[ -z "$debian_version" ]]; then
+        echo >&2 We have an versioned source dir, and yet no debian version
+        echo >&2 This is confusing
+        exit 6
+    fi
+    echo cd "$pkg-$upstream_version"
+    cd "$pkg-$upstream_version"
+    tag_dir
+    tag_dir_debian
+fi
+
+$action git push --tags
+
+# cd $workdir_top
+
+# find . -type d -wholename '*/debian/common' | while read i; do
+#     j=${i%%/debian/common}; k=$(dirname ${j##./})
+#     echo "Trying package $k"
+#     (cd ${i%%/common}; git pull)
+# done

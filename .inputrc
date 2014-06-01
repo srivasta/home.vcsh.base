@@ -1,0 +1,159 @@
+# My ~/.inputrc file is in -*- text -*- for easy editing with Emacs.
+#
+# Notice the various bindings which are conditionalized depending
+# on which program is running, or what terminal is active.
+#
+
+#
+# Set various bindings for emacs mode.
+set editing-mode emacs
+
+# don't strip characters to 7 bits when reading
+set input-meta on
+
+# allow iso-latin1 characters to be inserted rather
+# than converted to prefix-meta sequences
+set convert-meta off
+
+# display characters with the eighth bit set directly
+# rather than as meta-prefixed characters
+set output-meta on
+
+# if there are more than 150 possible completions for
+# a word, ask the user if he wants to see all of them
+set completion-query-items 150
+     
+# For FTP
+$if Ftp
+"\C-xg": "get \M-?"
+"\C-xt": "put \M-?"
+"\M-.": yank-last-arg
+$endif
+
+$if mode=emacs
+
+Meta-Control-h:    backward-kill-word      Text after the function name is ignored
+C-q: quoted-insert
+$endif
+
+
+# In all programs, all terminals, make sure this is bound.
+"\C-x\C-r": re-read-init-file
+
+# Arrow keys in keypad mode
+#
+"\C-[OD"        backward-char
+"\C-[OC"        forward-char
+"\C-[OA"        previous-history
+"\C-[OB"        next-history
+#
+# Arrow keys in ANSI mode
+#
+"\C-[[D"        backward-char
+"\C-[[C"        forward-char
+"\C-[[A"        previous-history
+"\C-[[B"        next-history
+
+# In xterm windows, make the arrow keys do the right thing.
+$if TERM=xterm
+"\e[A": previous-history
+"\e[B": next-history
+"\e[C": forward-char
+"\e[D": backward-char
+
+# Under Xterm in Bash, we bind local Function keys to do something useful.
+$if Bash
+"\e[11~": "Function Key 1"
+"\e[12~": "Function Key 2"
+"\e[13~": "Function Key 3"
+"\e[14~": "Function Key 4"
+"\e[15~": "Function Key 5"
+
+# I know the following escape sequence numbers are 1 greater than
+# the function key.  Don't ask me why, I didn't design the xterm terminal.
+"\e[17~": "Function Key 6"
+"\e[18~": "Function Key 7"
+"\e[19~": "Function Key 8"
+"\e[20~": "Function Key 9"
+"\e[21~": "Function Key 10"
+$endif
+$endif
+
+# For Bash, all terminals, add some Bash specific hacks.
+$if Bash
+"\C-xv": show-bash-version
+"\C-x\C-e": shell-expand-line
+
+# Here is one for editing my path.
+"\C-xp": "$PATH\C-x\C-e\C-e\"\C-aPATH=\":\C-b"
+
+# prepare to type a quoted word --
+# insert open and close double quotes
+# and move to just after the open quote
+"\C-x\"": "\"\"\C-b"
+
+# insert a backslash (testing backslash escapes
+# in sequences and macros)
+"\C-x\\": "\\"
+# Quote the current or previous word
+"\C-xq": "\eb\"\ef\""
+# Add a binding to refresh the line, which is unbound
+"\C-xr": redraw-current-line
+# Edit variable on current line.
+"\M-\C-v": "\C-a\C-k$\C-y\M-\C-e\C-a\C-y="
+
+$endif
+
+# Keypad
+"\C-[OP"        #pf1
+"\C-[OQ"        possible-completions #pf2
+"\C-[OR"        unix-line-discard    #pf3
+"\C-[OS"        kill-line            #pf4
+"\C-[Ow"        beginning-of-history #7
+"\C-[Ox"        end-of-history       #8
+"\C-[Oy"        backward-kill-word   #9
+"\C-[Om"        kill-word            #-
+"\C-[Ot"        #4
+"\C-[Ou"        #5
+"\C-[Ov"        backward-delete-char #6
+"\C-[Ol"        delete-char          #,
+"\C-[Oq"        backward-word        #1
+"\C-[Or"        forward-word         #2
+"\C-[Os"        end-of-line          #3
+"\C-[OM"        accept-line          #Enter
+"\C-[Op"        beginning-of-line    #0
+"\C-[On"        next-history         #.
+
+# This variable can be set to either `on' or `off'.  Setting it to
+# `on' means that the text of the lines being edited will scroll
+# horizontally on a single screen line when they are longer than the
+# width of the screen, instead of wrapping onto a new screen line.  By
+# default, this variable is set to `off'. 
+set horizontal-scroll-mode off
+
+# This variable, when set to `on', causes Readline to display an
+# asterisk (`*') at the start of history lines which have been
+# modified.  This variable is `off' by default. 
+set mark-modified-lines on
+
+# If set to `on', completed directory names have a slash appended.
+# The default is `on'. 
+set mark-directories on
+
+# If set to `on', completed names which are symbolic links to
+# directories have a slash appended (subject to the value of
+# `mark-directories').  The default is `off'. 
+set mark-symlinked-directories on
+
+# This alters the default behavior of the completion functions. If set
+# to `on', words which have more than one possible completion cause
+# the matches to be listed immediately instead  of ringing the bell.
+# The default value is `off'. 
+set show-all-if-ambiguous on
+
+
+# set DEL/HOME/END
+"\e[1~": beginning-of-line
+"\e[3~": delete-char
+"\e[4~": end-of-line
+

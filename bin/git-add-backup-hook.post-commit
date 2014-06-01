@@ -1,0 +1,50 @@
+#!/bin/sh -e
+#
+GIT_DIR="$(cd "$(dirname "$GIT_DIR")" && pwd)/$(basename "$GIT_DIR")"
+if ! [ -d "$GIT_DIR" ]; then
+    echo "GIT_DIR='$GIT_DIR' was not a directory!" 1>&2
+    exit 1
+fi
+
+# Run any "next" hooks:
+hook_next="$0.next"
+while [ -x "$hook_next" ]; do
+    hook_next="$hook_next.next"
+done
+hook_next="${hook_next%%.next}"
+
+while [ "$hook_next" != "$0" ]; do
+    "$hook_next" "$@"
+    hook_next="${hook_next%%.next}"
+done
+
+# Initialize remote repository?
+if ! git config --get remote.backup.url > /dev/null; then
+    host="$(git config --global --get backup.host || true)"
+    dir="$(git config --global --get backup.directory || true)"
+    user="$(git config --global --get backup.user || true)"
+    if [ -z "$host" -o -z "$dir" ]; then
+        echo "No backup configured (set backup.host and backup.directory git config)" 1>&2
+        exit
+    fi
+    user="${user:-$USER}"
+
+    # Name remote repository after hostname GIT_DIR:
+    remote_dir="$(hostname)/${GIT_DIR##/}"
+    remote_dir="$dir/${remote_dir%%/.git}.git"
+
+    echo "mkdir -p '$remote_dir' && cd '$remote_dir' && git init --bare" 1>&2
+
+    ssh "$host" "mkdir -p '$remote_dir' && cd '$remote_dir' && git init --bare"
+
+    if ! echo "$remote_dir" | grep '^/' > /dev/null; then
+        remote_dir="/~$user/$remote_dir"
+    fi
+
+    echo "Adding backup to $user@$host$remote_dir" 1>&2
+    git remote add backup "ssh://$user@$host$remote_dir"
+fi
+
+echo "Backup in progress..." 1>&2
+git push --mirror backup
+echo "Backup success" 1>&2

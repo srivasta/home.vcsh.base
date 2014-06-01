@@ -1,0 +1,99 @@
+#!/bin/sh 
+# Last edited:Fri Feb  1 15:57:37 1991 by srivasta (Manoj Srivastava) on batchr.ecs.umass.edu
+
+THISARC=1
+LASTARC=1
+MSG=""
+
+while test "$1" != ""
+do
+	case $1 in
+		-n) THISARC=$2; shift;;
+		-e) LASTARC=$2; shift;;
+		-t) MSG="$2"; shift;;
+		-*) echo "usage : `basename $0` [-n seq_number] [-e seq_end] [-t final_text] files "; exit 1;;
+		*) break;;
+	esac
+	shift
+done
+echo '#!/bin/sh'
+echo '#'
+echo '#  	This is a shell archive. Remove anything before the #!/bin/sh'
+echo '# line, then unpack it by saving it into a  file and typing  "sh file".'
+echo '# You can also feed this as standard input via unshar, or by typing "sh'
+echo '# <file", e.g  If this archive is  complete, you will see the following'
+echo '# message at the end:.'
+echo '#	       "End of archive '$THISARC'(of '$LASTARC')."'
+echo '#'
+echo '#' `basename $0` ': Shell Archiver '
+echo '#	  packed on '`date` 'by ' `finger $USER | 
+		awk '/Login name: / { for ( i= 7; i <= NF; i++)
+				printf "%s ",  $i
+				printf "\n"  
+				exit }'`
+echo '#      from directory '`pwd`
+echo '#'
+echo '# Contents:'
+for i
+do
+	echo '#	     ' `ls -s $i`
+done
+echo "PATH=/bin:/usr/bin:/usr/ucb ; export PATH"
+for i
+do
+	echo 'if test -f ' $i ' -a "${1}" != "-c" ; then'
+	echo 'echo "' `basename $0` ':File ' $i ' exists ";else'
+	echo 'echo "'`basename $0`' - extracting ' `file $i` '"'
+	echo "sed 's/^@X@//'  > $i <<'BUNDLE_EOF__$i' "
+	cat $i | awk '{print "@X@" $0}' 
+	echo "BUNDLE_EOF__$i"
+	var=`ls -l $i | awk '{ print $1 }'`
+	perm=0
+ 	for j in 1 2 3 4 5 6 7 8 9
+	do 
+		perm=`echo $var | awk '{ str=substr($0,'$j'+1,1);
+				 if(str !="-"){
+			 	 ins=9-'$j' ;ind=ins-3*int(ins/3); 
+				 if(ins < 3){mult=1}
+			  	 else { if(ins < 6){mult=10} else {mult=100}};
+				  per= '$perm'+mult*exp(ind*log(2));
+				  print per }else {print '$perm'} }'`
+
+	done
+	echo "chmod $perm $i"
+	echo 'if test '`wc -c < $i` ' -ne `wc -c <'"'$i'"'`; then'
+    	echo 'echo '`basename $0` ': \"'$i'\" unpacked with wrong size!'
+	echo 'echo '"'     '"'expected '`wc -c <$i` ' but got `wc -c<'"'$i'"'`'
+	echo 'fi'
+	echo "# end of '$i'"
+	echo 'fi'
+done
+echo 'echo	       "End of archive '$THISARC' (of '$LASTARC')."'
+echo 'echo "" > ./.arc"'$THISARC'"isdone'
+
+NARCH=""
+for k in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36 37 38 39 40 41 42 44 45 46 47 48 49 50
+do
+	NARCH="${NARCH} ${k}"
+#	echo '#DEBUG: NARCH= "'"${NARCH}"'" k="'"$k"'"'
+	if test $k -eq $LASTARC ; then
+	    break
+	fi
+done
+echo 'MISSING=""'
+echo 'for ARCHIVE in '${NARCH}
+echo do
+echo '	if test ! -f .arc${ARCHIVE}isdone ;then'
+echo '	    MISSING="${MISSING} ${ARCHIVE}" '
+echo '	fi'
+echo 'done'
+echo 'if test "${MISSING}" = "" ; then'
+echo '     echo You have unpacked all '$LASTARC' archives'
+echo '     echo '${MSG}
+echo '     rm -f .arc[1-'$LASTARC']isdone'
+echo 'else'
+echo '   echo you still have to unpack archives:'
+echo '   echo "       " ${MISSING}'
+echo 'fi'
+echo 'exit 0'
+echo '# end of archive'

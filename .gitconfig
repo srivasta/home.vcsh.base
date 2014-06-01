@@ -1,0 +1,239 @@
+[user]
+        name  = Manoj Srivastava
+        email = srivasta@golden-gryphon.com
+	signingkey = 0xC5779A1C
+
+[diff]
+        renames     = copies
+        renamelimit = 200
+	mnemonicprefix = true
+
+[mergetool "ediff"]
+       cmd = emacsclient --eval \"(git-mergetool-emacsclient-ediff \\\"$LOCAL\\\" \\\"$REMOTE\\\" \\\"$BASE\\\" \\\"$MERGED\\\")\"
+       trustExitCode = true
+[mergetool]
+    prompt = false
+
+[push]
+	default = upstream
+[core]
+	excludesfile = /home/srivasta/etc/global-gitignore
+#[init]
+#	templatedir = $XDG_CONFIG_HOME/git_templates
+
+[gitpkg]
+	deb-dir = /scratch/sandbox/staging/input
+	prebuild-target = clean
+        #pre-export-hook = /usr/share/gitpkg/hooks/pristine-tar-pre-export-hook
+	exit-hook = /home/srivasta/bin/gitpkg-build
+	create-fake-orig = false
+	force-overwrite-orig = false
+
+[gitpkg-build]
+	results-dir = /scratch/sandbox/staging/results
+	debarchive = /usr/local/debarchive
+	command = ssh
+	options = -t
+	options = 192.168.1.41
+	options = bin/remote_build
+	options = PACKAGE_NAME_HERE
+	# command = pdebuild
+	# options = --auto-debsign
+	# options = --
+	# options = --twice
+
+##### Merging  #############
+# Sometimes when you ask git to merge branch A into branch B, it will
+# decide that it doesn’t want to merge and it will instead turn A and
+# B into clones of each other. Your branch has effectively vanished
+# from history. There is no longer any indication that you were
+# working on a side branch; it looks like you were working directly on
+# master. And if it turns out that there were bugs in your new feature
+# (which, you know, sometimes happens), you can’t reverse the
+# merge-commit because there is no merge-commit.  You will have to
+# reverse every single commit you made, in reverse order, or worse.
+# Git calls the history erasing “fast-forwarding”.)
+
+# Fast-forward merging makes sense for short-lived branches, but in a
+# more complex history, non-fast-forward merging may make the history
+# easier to understand, and make it easier to revert a group of
+# commits.
+
+#
+# + short-lived branches are very easy to create and use in Git
+# + short-lived branches often isolate many commits that can be
+#   reorganized freely within that branch
+# + those commits are actually part of the main branch: once
+#   reorganized, the main branch is fast-forwarded to include them.
+
+# it really depends on your development workflow:
+# + if it is linear, one branch makes sense.
+# + If you need to isolate features and work on them for a long period
+#   of time and repeatedly merge them, several branches make sense.
+
+[merge]
+    tool = ediff
+
+[merge "merge-changelog"]
+        name = GNU-style ChangeLog merge driver
+        driver = /usr/local/bin/git-merge-changelog %O %A %B
+
+
+[rerere]
+  enabled = 1
+
+[color]
+        diff        = auto
+        status      = auto
+        branch      = auto
+        ui          = auto
+        interactive = auto
+	grep        = auto
+
+[color "branch"]
+       current = green
+       local   = yellow
+       remote  = red
+
+[color "diff"]
+       old     = red
+       new     = green
+       meta    = yellow
+       frag    = magenta
+
+[color "status"]
+       added     = green
+       changed   = yellow
+       untracked = red
+
+[column]
+	ui = auto
+
+[branch]
+        autosetupmerge = true
+
+[pager]
+        status      = true
+        show-branch = true
+
+[rebase]
+        autosquash = true
+
+[format]
+        numbered    = true
+
+[alias]
+        # Generally, doing incremental "git gc" is the right approach, and better
+        # than doing "git gc --aggressive". It's going to re-use old deltas, and
+        # when those old deltas can't be found (the reason for doing incremental GC
+        # in the first place!) it's going to create new ones.
+        #
+        # On the other hand, it's definitely true that an "initial import of a long
+        # and involved history" is a point where it can be worth spending a lot of
+        # time finding the *really*good* deltas. Then, every user ever after (as
+        # long as they don't use "git gc --aggressive" to undo it!) will get the
+        # advantage of that one-time event. So especially for big projects with a
+        # long history, it's probably worth doing some extra work, telling the delta
+        # finding code to go wild.
+        # schedule a full agressive repack once. -f forces a full --no-reuse-delta
+        full-repack   = repack -a -d -f --window=250 --depth=250
+        diffstat      = diff --stat -r
+
+        # Diff by highlighting inline word changes instead of whole lines
+        wdiff         = diff --word-diff
+        lc            = log ORIG_HEAD.. --stat --no-merges
+        last          = log -1 HEAD
+
+        fetch-all     = !git remote | xargs -n 1 git fetch
+        prune-all     = !git remote | xargs -n 1 git remote prune
+
+        gitkconflict  = !gitk --left-right HEAD...MERGE_HEAD
+        edit-unmerged = "!f() { git ls-files --unmerged | cut -f2 | sort -u ; }; edit `f`"
+        add-unmerged  = "!f() { git ls-files --unmerged | cut -f2 | sort -u ; }; git add `f`"
+
+        co            = checkout
+        ci            = commit -s
+        st            = status -sb
+        br            = branch
+        pi            = cherry-pick
+        pff           = pull --ff-only
+        dt            = difftool
+        mt            = mergetool
+        df            = diff
+        llog          = log --date=local
+        k             = !gitk
+	new           = diff ORIG_HEAD
+
+        amend         = commit --amend
+	up            = pull --rebase
+
+        in-tag        = name-rev --name-only
+        in-br         = branch --contains
+
+        #### LOG ###
+        # By default, git re-orders the history to make sure every
+        # commit is shown in its actual time order, not the story
+        # order. Using topo-order tells git to show things in
+        # “topological” (story) order.
+
+        # --topo-order --decorate --first-parent tells git to show
+        # things in story order and to tell that story from my point
+        # of view.  It’s sometimes interesting to see every commit
+        # that one of your coworkers did in their branch, but often
+        # you just want to see the merge-commit and move on.
+        # --first-parent tells git to skip over the details of every
+        # branch that isn’t a linear parent of yours. Generally this
+        # means you’ll see a simplified history of what’s been going
+        # on, without the intricacies of what happened on forked
+        # branches while they were forked off.
+
+        lg            = log -p
+        lpc           = log -p -c --no-merges
+        llog          = log --date=local
+
+        # Still show author and title, but in a graph like fashion
+        graph         = log --graph --pretty=short --decorate   --abbrev-commit --branches
+
+        # Show branches, tags in git log
+        olg           = log         --pretty=oneline --decorate --abbrev-commit
+
+        # Same, but show other branches in a graph
+        sgraph        = log --graph --pretty=oneline --decorate --abbrev-commit --all --topo-order
+        # Like sgraph, but has time and commiter info -- decorations are not yet colored
+        # Will replace sgraph when we get git 1.8.3
+        lx            = log --graph --pretty=format:'%C(Yellow)%h%Creset%d %Cgreen(%cr)%Creset %C(bold blue)%an%Creset %Cred\"%Creset%s%Cred\"%Creset' --decorate --abbrev-commit --all --topo-order
+
+        # One line, commit when who description
+        slg           = log         --pretty=format:'%Cblue%h %Cred%ar %Cblue%an %Creset t - %s'
+
+        who           = shortlog -n -s --no-merges
+        whois         = "!sh -c 'git log -i -1 --pretty=\"format:%an <%ae>\n\" --author=\"$1\"' -"
+        whatis        = show -s --pretty='tformat:%h (%s, %ad)' --date=short
+
+        ignored       = "!git ls-files --others --exclude-standard"
+
+        unstaged      = diff
+        staged        = diff --cached
+        changes       = "!sh -c 'git status | sed -n \"/Untracked/N;//N;1,//d;s/^#/?/p\"; git diff --name-status -r \"$@\"' -"
+        both          = diff HEAD
+
+        pending       = !git --no-pager log --stat origin/master..master && echo
+        wu            = log --stat origin..@{0}
+
+        undo          = reset --hard
+        unstage       = reset HEAD --
+        purge         = !git checkout $(git rev-parse --show-cdup) && git clean -xdf
+        track         = !sh -c 'git branch --track "$0" "$1" && git checkout "$0"'
+
+        graphviz = "!f() { echo 'digraph git {' ; git log --pretty='format:  %h -> { %p }' \"$@\" | sed 's/[0-9a-f][0-9a-f]*/\"&\"/g' ; echo '}'; }; f"
+        alias    = !sh -c '[ -n \"$1\" -a -z \"$2\" ] && git config --global alias.\"$0\" \"$1\" && exit 0 || echo \"usage: git alias <new alias> <original command>\" >&2 && exit 1'
+
+
+
+    get-tracking-remote = !git config branch.$(git name-rev --name-only HEAD).remote | awk '{printf \"%s%s\", (($1 == \".\") ? \"\" : $1), (($1 != \".\") ? \"/\" : \"\")}'
+    get-tracking-branch = !basename $(git config branch.$(git name-rev --name-only HEAD).merge)
+    show-tracking       = !echo \"$(git get-tracking-remote)$(git get-tracking-branch)\"
+    diff-tracking       = !git diff $(git show-tracking)
+	ctags = !.git/hooks/ctags
+[gpg]
+	program = gpg

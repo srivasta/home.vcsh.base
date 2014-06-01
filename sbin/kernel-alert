@@ -1,0 +1,351 @@
+#!/usr/bin/perl
+
+# kernel-alert v. 0.8
+# Author: Nathan Walp <faceprint@faceprint.com>
+
+# Run this as a cron, and it will alert you when new kernels come out...
+# 0.8
+#     Handle tree maintainers who name their patches funny (like Dave Jones
+#     and...well, that's it I guess)
+# 0.7
+#     Oops.  Working directory no selected correctly...
+#     Now executes cleanly w/ -w switch (probably a good thing)
+#     Removed .pl extension because it annoys me
+# 0.6
+#     Largely re-written (again).  External config file, prompting for
+#     configuration, and much better than it was.  Also probably won't
+#     break if they change the order/output of the scripts on kernel.org
+#     Oh yeah, this is now released under the Artistic License instead of
+#     the GPL.
+# 0.5
+#     Re-wrote the code from scratch.  It makes sense now ;-)
+#     Optionally deletes patch files after downloading them and sending mail
+# 0.4
+#     Added ability to run a script when new kernels come out
+# 0.3
+#     Added ability to attach patches to the email messages, cleaned the
+#     code up a bit.  Requires libnet and MIME-tools now.  Special 
+#     thanks to Gabor Z. Papp <gzp@gzp.org.hu> for his ideas & help.
+# 0.2
+#     Fixed empty-mail bug, added config section to make life easier for
+#     people other than me :-)
+# 0.1 
+#     First release
+#
+#
+##############################################################################
+##################### Configuration is done w/o editing this file now ########
+##################### Just run this script for the first time, or run ########
+##################### it with --configure, and it will prompt you for ########
+##################### everything it needs to know.                    ########
+##############################################################################
+
+$OPTION_NOTIFY = 0x1;
+$OPTION_ATTACH = 0x2;
+$OPTION_SCRIPT = 0x4;
+
+# modules out the wazoo we need to use
+use Net::Finger;
+use Net::FTP;
+use MIME::Entity;
+use Getopt::Long;
+use Term::Prompt;
+
+
+GetOptions("configure",\&do_configure);
+
+%config = &read_config();
+%new_versions = &get_versions();
+
+# figure out subdirectories
+foreach $label (keys %new_versions)
+{
+  @parts = split(/\./,$new_versions{$label});
+  ($parts[2],$trash) = split(/-/,$parts[2]);
+  if($label =~ /^prepatch-/)
+  {
+    $directory{$label} = "v$parts[0].$parts[1]/testing";
+  }
+  elsif($label eq "-ac")
+  {
+    $directory{$label} = "people/alan/linux-$parts[0].$parts[1]/$parts[0].$parts[1].$parts[2]";
+  }
+  elsif($label eq "-dj")
+  {
+    $directory{$label} = "people/davej/patches/$parts[0].$parts[1]/$parts[0].$parts[1].$parts[2]";
+    $extra_ext{$label} = ".diff";
+  }
+  else
+  {
+    $directory{$label}="v$parts[0].$parts[1]";
+  }
+}
+
+
+$num_new = 0;
+foreach $label (keys %new_versions)
+{
+   if(!defined($config{kernel}{$label}))
+   {
+      $config{kernel}{$label}{options} = 1; #default to just making noise
+      $body .= "kernel.org just started providing info about `$label` kernels.\n";
+      $body .= "If you want to ignore these in the future, please run kernel-alert.pl\n";
+      $body .= "with the --configure option, and disable notification for this\n";
+      $body .= "series of kernels.\n\n";
+   }
+   if($config{kernel}{$label}{version} ne $new_versions{$label} && $new_versions{$label} ne "")
+   {
+      if($config{kernel}{$label}{options} & $OPTION_NOTIFY)
+      {
+	 $body .= "New $label kernel: $new_versions{$label}\n";
+	 $body .= "    ftp://$config{mirror}/pub/linux/kernel/$directory{$label}\n\n";
+      }
+
+      if($config{script} ne "none" && -x $config{script})
+      {
+	 $_ = $config{script};
+	 s/VERSION/$new_versions{$label}/g;
+	 system($_);
+      }
+
+      $config{kernel}{$label}{version} = $new_versions{$label};
+      $config{kernel}{$label}{have_new} = 1;
+      $num_new++;
+   }
+}
+
+if($num_new == 0)
+{
+   exit;
+}
+
+chdir($config{working_directory});
+
+# build the email
+
+if($body ne '')
+{
+   if(&get_files()) {
+      $msg = build MIME::Entity Type      =>'multipart/mixed',
+                                From      =>$config{email_from},
+                                To        =>$config{email_to},
+                                Subject   =>'New kernel(s) available';
+      attach $msg Data=> $body;
+      foreach $label (keys %{$config{kernel}})
+      {
+	 if($config{kernel}{$label}{have_new} &&
+	    $result{$label} && $config{kernel}{$label}{options} & $OPTION_ATTACH)
+	 {
+	    attach $msg Path       => "patch-$config{kernel}{$label}{version}$extra_ext{$label}.$config{compression}",
+	                Type       => 'application/octet-stream',
+	                Encoding   => 'base64';
+	 }
+      }
+   }
+   else {
+      $msg = build MIME::Entity Type      =>'text/plain',
+                                From      =>$config{email_from},
+                                To        =>$config{email_to},
+                                Subject   =>'New kernel(s) available',
+                                Data      =>$body;
+   }
+
+   # This is an ugly kludge...please someone show me a better way ;-)
+   open SENDMAIL, "| $config{sendmail}" or die "open: $!";
+   $msg->print(\*SENDMAIL);
+   close SENDMAIL;
+
+   # OK, mail is sent, time to run that script so we can get outta here
+   # clean up downloaded patches
+   if($config{delete_patches}) 
+   {
+      foreach $label (keys %new_versions)
+      {
+	 if($result{$label})
+	 {
+	    unlink("patch-$new_versions{$label}$extra_ext{$label}.$config{compression}");
+	 }
+      }
+   }
+}
+
+&save_config(%config);
+
+#...and we're done!
+exit;
+
+
+###############################################################################
+##### Subroutines #############################################################
+###############################################################################
+sub get_versions() {
+   @finger_lines = finger ('@ftp.kernel.org');
+   foreach $index (0 .. $#finger_lines)
+   {
+      ($trash,$label) = split(/latest /,$finger_lines[$index],2);
+      $label =~ s/ for the /-/;
+      ($label,$version) = split(/ /,$label,2);
+      ($trash,$version) = split(/:/,$version);
+      $version =~ s/ //g;
+      chomp $version;
+
+      $version{$label} = $version;
+   }
+
+   return %version;
+}
+
+sub save_config()
+{
+   (%config) = @_;
+   open(RCFILE,">$ENV{HOME}/.kernel-alertrc");
+   foreach $key (keys %config)
+   {
+      if($key eq "kernel")
+      {
+	 foreach $label (keys %{$config{kernel}})
+	 {
+	    print RCFILE "kernel\t$label\t$config{kernel}{$label}{options}\t$config{kernel}{$label}{version}\n";
+	 }
+      }
+      else
+      {
+	 print RCFILE "$key\t$config{$key}\n";
+      }
+   }
+   close RCFILE;
+}
+
+sub read_config()
+{
+   open(RCFILE,"$ENV{HOME}/.kernel-alertrc");
+   while(<RCFILE>)
+   {
+      chomp;
+      ($key,$value) = split(/\s/,$_,2);
+      if($key eq "kernel")
+      {
+	 ($label,$options,$version) = split(/\s/,$value,3);
+	 $config{kernel}{$label}{options} = $options;
+	 $config{kernel}{$label}{version} = $version;
+      }
+      else
+      {
+	 $config{$key} = $value;
+      }
+   }
+   close RCFILE;
+   if(!defined($config{mirror}) || !defined($config{compression}) ||
+   !defined($config{working_directory}) || !defined($config{email_from}) ||
+   !defined($config{email_to}) || !defined($config{delete_patches}) ||
+   !defined($config{script}))
+   {
+      return configure(%config);
+   }
+   return %config;
+}
+
+sub configure()
+{
+   my (%config) = @_;
+   my $host = `hostname`;
+   chomp $host;
+   print "starting configuration...\n";
+   $config{mirror} = "ftp.us.kernel.org" unless $config{mirror};
+   $config{compression} = "gz" unless $config{compression};
+   $config{delete_patches} = "y" unless defined($config{delete_patches});
+   $config{working_directory} = "/tmp" unless $config{working_directory};
+   $config{email_from} = "$ENV{USER}\@$host" unless $config{email_from};
+   $config{email_to} = "$ENV{USER}\@$host" unless $config{email_to};
+   $config{script} = "none" unless $config{script};
+   $config{sendmail} = "/usr/sbin/sendmail -t -i" unless $config{sendmail};
+   $config{mirror} = &prompt("X","kernel.org mirror","the mirror to download patches from, and to link to in the email",$config{mirror});
+   $config{compression} = &prompt("i","file format","gz or bz2",$config{compression},('gz','bz2'));
+   $config{delete_patches} = &prompt("Y","delete patches","should we delete the patches after attaching them to the email?",$config{delete_patches});
+   $config{working_directory} = &prompt("X","working directory","a place we have write-access to, and where we'll store the patches if we don't delete them",$config{working_directory});
+   $config{email_from} = &prompt("X","From: email address","from address for the notification email",$config{email_from});
+   $config{email_to} = &prompt("X","To: email address","to address for the notification email",$config{email_to});
+   $config{script} = &prompt("X","script to run","script to run when a new kernel comes out.  VERSION is replaces by the version number",$config{script});
+   $config{sendmail} = &prompt("X","sendmail","sendmail (or alternative equivalent to 'sendmail -t -i')",$config{sendmail});
+   my %versions = get_versions();
+   foreach $label (keys %versions)
+   {
+      $config{kernel}{$label}{options} = 1 unless defined($config{kernel}{$label}{options});
+      $notify = &prompt("Y","notify of new '$label' kernels",'',$config{kernel}{$label}{options} & $OPTION_NOTIFY);
+      if($notify)
+      {
+	 $attach = &prompt("Y","attach new '$label' kernel patches",'',$config{kernel}{$label}{options} & $OPTION_ATTACH);
+      }
+      else
+      {
+	 $attach = 0;
+      }
+      if($config{script} ne "none" && $notify)
+      {
+	 $script = &prompt("Y","run script for new '$label' kernels",'',$config{kernel}{$label}{options} & $OPTION_SCRIPT);
+      }
+      else
+      {
+	 $script = 0;
+      }
+      $config{kernel}{$label}{options} = 0;
+      if($notify)
+      {
+	 $config{kernel}{$label}{options} |= $OPTION_NOTIFY;
+      }
+      if($attach)
+      {
+	 $config{kernel}{$label}{options} |= $OPTION_ATTACH;
+      }
+      if($script)
+      {
+	 $config{kernel}{$label}{options} |= $OPTION_SCRIPT;
+      }
+   }
+   &save_config(%config);
+   exit;
+}
+
+sub do_configure()
+{
+   %config = read_config();
+   &configure(%config);
+   exit;
+}
+
+sub get_files() {
+   $num=0;
+   foreach $label (keys %{$config{kernel}})
+   {
+      if($config{kernel}{$label}{options} & $OPTION_ATTACH)
+      {
+	 $num++;
+      }
+   }
+   return 0 unless $num > 0;
+
+   $ftp = Net::FTP->new($config{mirror});
+   $ftp->login('anonymous',$config{email_from});
+   foreach $label (keys %{$config{kernel}})
+   {
+      if($config{kernel}{$label}{have_new} && 
+         $config{kernel}{$label}{options} & $OPTION_ATTACH)
+      {
+	 $ftp->cwd("/pub/linux/kernel/$directory{$label}");
+	 $ftp->get("patch-$config{kernel}{$label}{version}$extra_ext{$label}.$config{compression}");
+	 $result{$label} = ($ftp->code() != 550);
+      }
+   }
+
+   $ftp->quit();
+
+   foreach $value (values %result)
+   {
+      if($value)
+      {
+	 return 1;
+      }
+   }
+
+   return 0;
+}

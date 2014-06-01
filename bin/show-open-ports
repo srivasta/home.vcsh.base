@@ -1,0 +1,13 @@
+#!/bin/sh
+#
+# List open ports, along with the name of the associated service if it
+# is available.
+#
+# Steve
+# --
+# http://www.steve.org.uk/
+#
+# $Id: show-open-ports,v 1.3 2005-11-08 17:57:06 steve Exp $
+#
+
+/bin/netstat -nlatp | grep tcp | grep LIST | awk '{print $4,$7}' | awk -F: '{print $2}' | awk -F/ '{print $1,$2}' | awk '{print $1,$3}' | sort -nu | grep ^[0-9]

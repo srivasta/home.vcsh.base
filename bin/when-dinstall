@@ -1,0 +1,52 @@
+#!/bin/bash
+#                               -*- Mode: Sh -*- 
+# when-dinstall.sh --- 
+# Author           : Manoj Srivastava ( srivasta@glaurung.internal.golden-gryphon.com ) 
+# Created On       : Thu Nov 18 13:57:23 2004
+# Created On Node  : glaurung.internal.golden-gryphon.com
+# Last Modified By : Manoj Srivastava
+# Last Modified On : Thu Nov 18 14:16:32 2004
+# Last Machine Used: glaurung.internal.golden-gryphon.com
+# Update Count     : 10
+# Status           : Unknown, Use with caution!
+# HISTORY          : 
+# Description      : 
+# 
+# 
+set -e
+
+run="01:52 07:52 13:52 19:52"
+now=`date +%s`
+# To find out, issue date -R
+#tz=`date -R|sed 's/.*\(.[0-9]\{4\}\)$/\1/'`	# local timezone
+tz=UTC   # time zone on ftp-master
+echo -n "Dinstall shall run in "
+for when in $run
+do
+    dinstall=`TZ=$tz date -d "$when:0" +%s`
+    diff=$[ $dinstall - $now ]
+    if [ $diff -gt 0 ]
+    then
+	hours=$[ $diff / 3600 ]
+	diff=$[ $diff % 3600 ]
+	minutes=$[ $diff / 60 ]
+	diff=$[ $diff % 60 ]
+	date -d "01/01/1970 $hours:$minutes:$diff" +%T
+	exit
+    fi
+done
+
+for when in $run
+do
+    dinstall=`TZ=$tz date -d "$when:0" +%s`
+    diff=$[ $dinstall - $now + 86400 ]
+    if [ $diff -gt 0 ]
+    then
+	hours=$[ $diff / 3600 ]
+	diff=$[ $diff % 3600 ]
+	minutes=$[ $diff / 60 ]
+	diff=$[ $diff % 60 ]
+	date -d "01/01/1970 $hours:$minutes:$diff" +%T
+	exit
+    fi
+done

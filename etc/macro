@@ -1,0 +1,83 @@
+Path: glaurung.green-gryphon.com!news.ametro.net!newsfeed.ametro.net!xmission!news-spur1.maxwell.syr.edu!news.maxwell.syr.edu!newsfeed.nacamar.de!rz.uni-karlsruhe.de!news.uni-stuttgart.de!news.ruhr-uni-bochum.de!news-koe1.dfn.de!nx6.hrz.uni-dortmund.de!Informatik.Uni-Dortmund.DE!news
+From: Kai.Grossjohann@CS.Uni-Dortmund.DE
+Newsgroups: comp.emacs,comp.emacs.xemacs,gnu.emacs.sources
+Subject: Re: neat little macro to speed up your .emacs files...
+Date: 18 Apr 1999 18:03:28 +0200
+Organization: University of Dortmund, Germany
+Lines: 17
+Message-ID: <vaf1zhhex0v.fsf@ramses.cs.uni-dortmund.de>
+References: <wk676u34ov.fsf@mit.edu>
+NNTP-Posting-Host: ramses.cs.uni-dortmund.de
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+User-Agent: Gnus/5.07008 (Pterodactyl Gnus v0.80) Emacs/20.3.8
+Xref: glaurung.green-gryphon.com comp.emacs:330 comp.emacs.xemacs:118 gnu.emacs.sources:1461
+
+David Bakhash <cadet@mit.edu> writes:
+
+  > Just thought I'd throw this out.  It's really simple, but the fact is
+  > that some things in your ~/.emacs might actually take some time, and if
+  > those things were compiled, then they'd make initialization a bit
+  > quicker.
+
+In recent Emacsen, you can
+
+    M-x rename-file RET ~/.emacs RET ~/.emacs.el RET
+    M-x byte-compile-file RET ~/.emacs.el RET
+
+Is your solution faster?
+
+kai
+-- 
+Abort this operation?   [Abort]  [Cancel]
+Path: glaurung.green-gryphon.com!news.ametro.net!newsfeed.ametro.net!logbridge.uoregon.edu!news.bu.edu!not-for-mail
+From: David Bakhash <cadet@mit.edu>
+Newsgroups: comp.emacs,comp.emacs.xemacs,gnu.emacs.sources
+Subject: neat little macro to speed up your .emacs files...
+Date: 18 Apr 1999 00:58:40 -0400
+Organization: Boston University
+Lines: 39
+Message-ID: <wk676u34ov.fsf@mit.edu>
+NNTP-Posting-Host: zero.bu.edu
+X-Newsreader: Gnus v5.5/Emacs 20.3
+Xref: glaurung.green-gryphon.com comp.emacs:329 comp.emacs.xemacs:117 gnu.emacs.sources:1458
+
+Hey,
+
+Just thought I'd throw this out.  It's really simple, but the fact is
+that some things in your ~/.emacs might actually take some time, and if
+those things were compiled, then they'd make initialization a bit
+quicker.  It's a neat little macro that is just like progn, except that
+whatever is inside is done at the speed that compiled code is done.  If
+you guys are like me, you don't want to byte-compile your .emacs files.
+It's just a pain.  This helps for people who like to use things like
+`loop', and other macros.  Just put the slow stuff inside the
+`progn-compiled' and get get a massive speed-up.  Cool -- a macro that
+makes other macros go faster :-)
+
+(require 'cl)
+(defmacro* progn-compiled (&body body)
+  (let ((fname (gensym)))
+    `(progn
+       (setf (symbol-function ',fname)
+	     (function* (lambda ()
+			  ,@body)))
+       (byte-compile ',fname)
+       (unwind-protect
+	   (funcall ',fname)
+	 (fmakunbound ',fname)))))
+
+If you want to see what the benefits are, try some random sample code:
+
+(progn-compiled
+ (loop for sym being the symbols
+       count sym))
+
+running this versus running it without the `progn-compiled' around it is
+a pretty significant difference.  give it a shot.
+
+dave
+
+
+
+

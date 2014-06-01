@@ -1,0 +1,35 @@
+#!/usr/bin/perl 
+
+# $Header: dus,v 4.0 91/03/20 01:09:20 lwall Locked $
+
+# This script does a du -s on any directories in the current directory that
+# are not mount points for another filesystem.
+
+while ($_ = $ARGV[0], /^-/) {
+  shift;
+  /^-a/ && $ALL++;
+  /^-a/ || {$DUOPTS .= " $_ "};
+}
+$topdir = shift;
+
+chdir ($topdir) if $topdir;
+print "$topdir\n" if $topdir;
+
+
+($mydev,$ino,$mode,$nlink,$uid,$gid,$rdev,$size,$atime,$mtime,$ctime,
+   $blksize,$blocks) = stat('.');
+
+open(ls,'find . -maxdepth 1 -xdev -type d |');
+
+while (<ls>) {
+    chomp;
+    ($dev,$ino,$mode,$nlink,$uid,$gid,$rdev,$size,$atime,$mtime,$ctime,
+       $blksize,$blocks) = stat($_);
+    next unless $dev == $mydev;
+    push(@ary,$_);
+}
+
+push(@ary,'.') if $ALL;
+#exec 'du', '-h', '-s', @ary;
+#print "du -s @ary\n";
+exec 'du', '-s', '-h', '-c', @ary;

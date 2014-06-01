@@ -1,0 +1,17 @@
+#!/bin/sh
+#                               -*- Mode: Sh -*- 
+# quicken --- 
+# Author           : Manoj Srivastava ( srivasta@glaurung.internal.golden-gryphon.com ) 
+# Created On       : Fri Feb 24 21:10:45 2006
+# Created On Node  : glaurung.internal.golden-gryphon.com
+# Last Modified By : Manoj Srivastava
+# Last Modified On : Fri Feb 24 21:11:16 2006
+# Last Machine Used: glaurung.internal.golden-gryphon.com
+# Update Count     : 1
+# Status           : Unknown, Use with caution!
+# HISTORY          : 
+# Description      : 
+# 
+# 
+exec /usr/bin/schroot -p -c sid32 -q -- ~/bin/wine --cx-app firefox.exe
+# ~/bin/wine --cx-app qw.exe

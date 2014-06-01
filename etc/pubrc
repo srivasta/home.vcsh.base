@@ -1,0 +1,4 @@
+TARGETHOST=people.debian.org
+TARGETDIR=public_html
+PUBBASE=http://people.debian.org/~srivasta
+VERIFY=1

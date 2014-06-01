@@ -1,0 +1,82 @@
+#!/usr/bin/python
+
+#
+#      popbugs - Find RC bugs in packages you commonly use
+#      Matt Zimmerman <mdz@debian.org> 2001
+#
+
+import sys
+import re
+import urllib2
+
+popconfile = '/var/log/popularity-contest'
+bugurl = 'http://bugs.debian.org/release-critical/other/all.html'
+
+
+if len(sys.argv) > 1:
+    popconfile = sys.argv[1]
+
+class Package:
+    def __init__(self, name, atime):
+        self.name = name
+        self.atime = atime
+
+packages = {}
+pkglist = []
+popcon = open(popconfile,'r')
+for line in popcon.readlines():
+    if len(line) == 0 or line.find(':') != -1:
+        continue
+
+    fields = line.split()
+    if len(fields) != 4:
+        continue
+    if (fields[0] == 'POPULARITY-CONTEST-0' or
+        fields[0] == 'END-POPULARITY-CONTEST-0'):
+        continue
+    
+    (atime, ctime, package, pathname) = fields
+#    if pathname == '<NOFILES>' or pathname == '<RECENT-CTIME>':
+#        continue
+
+    
+    packages[package] = Package(package,atime)
+    pkglist.append(packages[package])
+    
+popcon.close()
+
+page = urllib2.urlopen(bugurl).readlines()
+
+while page:
+    line = page.pop(0)
+    sys.stdout.write(line)
+    if line.startswith('<pre>'):
+        break
+
+packagere = re.compile('^<a name="([^"]+)"><strong>Package:.*')
+while page:
+    m = packagere.match(page[0])
+    if m:
+        html = ''
+        while page:
+            line = page.pop(0)
+            html += line
+            if line == '\n' or line == '</font>\n':
+                break
+
+        pkgname = m.group(1)
+
+        if pkgname in packages:
+            packages[pkgname].html = html
+    else:
+        if page[0].startswith('</pre>'):
+            break
+        page.pop(0)
+
+pkglist.sort(lambda a,b: -cmp(a.atime,b.atime))
+for package in pkglist:
+    if hasattr(package,'html'):
+        sys.stdout.write(package.html)
+        sys.stdout.write('\n')
+
+sys.stdout.writelines(page)

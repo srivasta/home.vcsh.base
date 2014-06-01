@@ -1,0 +1,8 @@
+#! /bin/bash -norc
+/www/sbin/MOMspider/momspider \
+  -e /usr/users/srivasta/etc/momspider/stderr \
+  -o /usr/users/srivasta/etc/momspider/stdout \
+  -i /usr/users/srivasta/etc/momspider/instruct \
+  -a /usr/users/srivasta/etc/momspider/avoid \
+  -s /usr/users/srivasta/etc/momspider/sites \
+  -V 3

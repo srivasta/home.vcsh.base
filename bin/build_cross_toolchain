@@ -1,0 +1,251 @@
+#!/bin/sh
+
+# Copyright (C) 2009 Manoj Srivastava.
+
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# 
+# This script is inspired by one that was written by Uwe Hermann
+# <uwe@hermann-uwe.de>, released as public domain. The modifications
+# made are that, for the most part, it tries to use Debian sources, in
+# order to remain as compatible as possible.
+
+# Download /software/misc/build_cross_toolchain.txt
+
+set -e
+progname="`basename \"$0\"`"
+
+
+######################################################################
+##########            Utility Functions                     ##########
+######################################################################
+setq() {
+    # Variable Value Doc string
+    if [ "x$2" = "x" ]; then
+        echo >&2 "$progname: Unable to determine $3"
+        exit 1;
+    else
+        if [ ! "x$Verbose" = "x" ]; then
+            echo "$progname: $3 is $2";
+        fi
+        eval "$1=\"\$2\"";
+    fi
+}
+
+withecho () {
+        echo " $@" >&2
+        "$@"
+}
+
+usageversion () {
+        cat >&2 <<END
+Debian GNU/Linux $progname $pversion.
+           Copyright (C) 2009 Manoj Srivastava.
+This is free software; see the Artistic Licence for copying
+conditions.  There is NO warranty.  
+
+Usage: $progname  [options]
+Options: 
+  -g    <X.X>         The GCC major, minor versions to get. Default: 4.4
+  -h,--help           print this message
+  -j <int>            The -j argument to pass to make, to build in parallel.
+                      default: -j 2
+  -n,--nop            "Dry-run" mode - No action taken, only print commands.
+  --prefix <dest>,
+  -p <dest>           The prefix for the installation directory (example:
+                      /usr or /usr/local) Default: /usr/local/ipod
+  --target <target>,
+  -t <target>         The target system to pass to the GNU confuiguration
+                      tools, for example, arm-elf or arm-none-eabi.
+                      Default: arm-elf
+  -u <URL>            The URL to download newlib from, Default:
+                      ftp://sources.redhat.com/pub/newlib/newlib-1.17.0.tar.gz
+END
+}
+
+######################################################################
+##########              Parse command line                  ##########
+######################################################################
+#
+# Long term variables, which may be set in the config file or the
+# environment: 
+# DEBUG rootdir workdir (if all original sources are kept in one dir)
+#
+# 
+
+TARGET=arm-elf			 # Or: TARGET=arm-none-eabi
+PREFIX=/usr/local/ipod           # Install location of your final toolchain
+PARALLEL="-j 2"			 # Or: PARALLEL=""
+GCC_MAJ_MIN="4.4"                # The major and minor version of gcc to use
+
+# Debian does not have newlib
+NEWLIB_URL='ftp://sources.redhat.com/pub/newlib/newlib-1.17.0.tar.gz'
+
+action='withecho'
+DEBUG=${DEBUG:-0}
+do_it=1
+
+# Command line
+TEMP=$(getopt -a -s bash -o g:hj:np:t:u: --long help,nop,target:,prefx: -n "$progname" -- "$@")
+if [ $? != 0 ] ; then echo "Terminating..." >&2 ; exit 1 ; fi
+
+# Note the quotes around `$TEMP': they are essential!
+eval set -- "$TEMP"
+while true ; do
+    case "$1" in
+        -h|--help) usageversion; exit 0    ; shift   ;;
+        -n|--nop)  action='echo'; do_it='' ; shift   ;;
+        -g) GCC_MAJ_MIN="$2"               ; shift 2 ;;
+        -j) PARALLEL="-j $2"               ; shift 2 ;;
+        -p|--prefix) PREFIX="$2"           ; shift 2 ;;
+        -t|--target) TARGET="$2"           ; shift 2 ;;
+        -u) NEWLIB_URL="$2"                ; shift 2 ;;
+        --)        shift                   ; break   ;;
+        *) echo >&2 "Error!($1)"
+            usageversion; exit 1                ;;
+    esac
+done
+
+
+######################################################################
+##########           Preparation                            ##########
+######################################################################
+export PATH="$PATH:$PREFIX/bin"
+WORKDIR=$(pwd)
+echo >&2 creating working directory
+if [ -n "$do_it" ]; then
+    MYDIR=$(mktemp -d -p $WORKDIR -q) || exit 2
+else
+    echo 'MYDIR=$(mktemp -d -p $WORKDIR -q) || exit 2'
+    MYDIR="$WORKDIR/random-string"
+fi
+$action cd $MYDIR
+$action mkdir build 
+
+######################################################################
+##########           Build tools                            ##########
+######################################################################
+
+
+######################################################################
+##########              binutils                            ##########
+######################################################################
+$action apt-get source binutils
+if [ -n "$do_it" ]; then
+    changelog=$(find binutils* -type f -path \*/debian/changelog)
+    pkg_name=${changelog%%/*}
+else
+    echo 'changelog=$(find binutils* -type f -path \*/debian/changelog)'
+    echo 'pkg_name=${changelog%%/*}'
+    pkg_name=binutils
+fi
+
+$action mkdir build/$pkg_name
+$action cd build/$pkg_name
+$action ../../$pkg_name/configure --target=$TARGET --prefix=$PREFIX  \
+          --enable-interwork --enable-multilib --with-gnu-as --with-gnu-ld \
+            --disable-nls
+$action make $PARALLEL
+$action make install
+$action cd ../..
+
+######################################################################
+##########                 gcc                              ##########
+######################################################################
+$action apt-get source gcc-$GCC_MAJ_MIN
+if [ -n "$do_it" ]; then
+    changelog=$(find gcc-${GCC_MAJ_MIN}* -type f -path \*/debian/changelog)
+    pkg_name=${changelog%%/*}
+else
+    echo 'changelog=$(find binutils* -type f -path \*/debian/changelog)'
+    echo 'pkg_name=${changelog%%/*}'
+    pkg_name=gcc
+fi
+(cd $pkg_name; ./debian/rules unpack)
+gcc_pkg_name=$pkg_name
+
+$action mkdir build/$pkg_name
+$action cd build/$pkg_name
+$action ../../$pkg_name/configure --target=$TARGET --prefix=$PREFIX        \
+          --enable-interwork --enable-multilib --with-gnu-as --with-gnu-ld \
+           --enable-languages="c" --with-newlib --without-headers          \
+              --disable-shared
+$action make $PARALLEL all-gcc
+$action make install-gcc
+$action cd ../..
+
+######################################################################
+##########                 newlib                           ##########
+######################################################################
+$action wget $NEWLIB_URL
+$action tar zvvfx ${NEWLIB_URL##*/}
+if [ -n "$do_it" ]; then
+    pkg_name=${NEWLIB_URL##*/}
+else
+    pkg_name=newlib
+fi
+
+$action mkdir build/$pkg_name
+$action cd build/$pkg_name
+$action ../../$pkg_name/configure --target=$TARGET --prefix=$PREFIX        \
+          --enable-interwork --enable-multilib --with-gnu-as --with-gnu-ld \
+            --disable-nls            
+$action make $PARALLEL
+$action make install
+$action cd ../..
+
+######################################################################
+##########               gcc, again                         ##########
+######################################################################
+pkg_name=$gcc_pkg_name
+test ! -d build/$pkg_name || $action rm -rf build/$pkg_name
+$action mkdir build/$pkg_name
+$action cd build/$pkg_name
+$action ../../$pkg_name/configure --target=$TARGET --prefix=$PREFIX        \
+          --enable-interwork --enable-multilib --with-gnu-as --with-gnu-ld \
+           --enable-languages="c" --with-newlib --without-headers          \
+              --disable-shared
+$action make $PARALLEL all-gcc
+$action make install-gcc
+$action cd ../..
+
+
+
+######################################################################
+##########                 gdb                              ##########
+######################################################################
+$action apt-get source gdb
+if [ -n "$do_it" ]; then
+    changelog=$(find gdb* -type f -path \*/debian/changelog)
+    pkg_name=${changelog%%/*}
+else
+    echo 'changelog=$(find binutils* -type f -path \*/debian/changelog)'
+    echo 'pkg_name=${changelog%%/*}'
+    pkg_name=gdb
+fi
+
+$action mkdir build/$pkg_name
+$action cd build/$pkg_name
+$action ../../$pkg_name/configure --target=$TARGET --prefix=$PREFIX        \
+          --enable-interwork --enable-multilib
+$action make $PARALLEL
+$action make install
+$action cd $WORKDIR
+
+######################################################################
+##########                   fini                           ##########
+######################################################################
+echo >&2 "build tree left in $MYDIR"
+exit 0;
+

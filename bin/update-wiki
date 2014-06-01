@@ -1,0 +1,27 @@
+#! /bin/sh
+#                               -*- Mode: Sh -*- 
+# update-wiki --- 
+# Author           : Manoj Srivastava ( srivasta@glaurung.internal.golden-gryphon.com ) 
+# Created On       : Mon Dec 18 02:13:20 2006
+# Created On Node  : glaurung.internal.golden-gryphon.com
+# Last Modified By : Manoj Srivastava
+# Last Modified On : Tue Apr  1 21:24:58 2008
+# Last Machine Used: anzu.internal.golden-gryphon.com
+# Update Count     : 2
+# Status           : Unknown, Use with caution!
+# HISTORY          : 
+# Description      : 
+# 
+# 
+
+set -e
+
+WORKDIR=/home/srivasta/Wiki
+cd $WORKDIR
+
+cd manoj
+git checkout master
+git pull
+
+ikiwiki --setup $HOME/.ikiwiki/manoj  --refresh
+

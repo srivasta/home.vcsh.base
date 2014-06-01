@@ -1,0 +1,51 @@
+#!/bin/bash
+# Usage: preload-emacs <name> [<waitp>]
+#
+# Preloads the Emacs instance called NAME in a detached screen
+# session.  Does nothing if the instance is already running.  If WAITP
+# is non-empty, the function waits until the server starts up and
+# creates its socket; otherwise it returns immediately.
+set -e
+
+name="$1"
+waitp="$2"
+screendir="/var/run/screen/S-$USER"
+#serverdir="$HOME/var/tmp/emacs$UID"
+serverdir="/tmp/emacs$UID"
+emacs=emacs  # Or wherever you installed your multi-tty Emacs
+if [ -n "$DISPLAY" ]; then
+    disp="-d $DISPLAY"
+else
+    disp=''
+fi
+
+if [ -z "$name" ]; then 
+    echo "Usage: preload_emacs <name> [<waitp>]" >&2
+    exit 1
+fi
+
+if [ -e "$serverdir/$name" ]; then
+    if emacsclient $disp -c -s $name -c -e "(server-edit)" $HOME/junk >/dev/null 2>&1; then
+        exit 0
+    fi
+fi
+
+#########################################################################################################
+# if [ ! -e "$screendir"/*."$name" ]; then                                                              #
+#     if [ -e "$serverdir/$name" ]; then                                                                #
+#         # Delete leftover socket (for the wait option)                                                #
+#         rm "$serverdir/$name"                                                                         #
+#     fi                                                                                                #
+#     screen -dmS "$name" "$emacs" -- --no-splash --eval "(setq server-name \"$name\")" -f server-start #
+# fi                                                                                                    #
+#########################################################################################################
+if [ -e "$serverdir/$name" ]; then
+    # Delete leftover socket (for the wait option)  
+    rm "$serverdir/$name"
+fi
+
+$emacs --daemon --no-splash &
+
+if [ ! -z "$waitp" ]; then
+    while [ ! -e "$serverdir/$name" ]; do sleep 0.1; done
+fi

@@ -1,0 +1,57 @@
+#! /bin/sh
+
+set -e
+self=`basename "$0"`
+
+usage () {
+    cat <<EOF
+        Usage: $self [-out] CMD ARG ...
+
+        Execute CMD with the given ARGS.
+
+        Stderr is redirected to a temporary file. If CMD exits with a non-zero
+        status, the contents of the temporary file are printed to stderr.
+
+        --out   also redirect stdout
+
+EOF
+}
+
+if test "$1" = "-out" ; then
+    shift
+    redirect_stdout=true
+else
+    redirect_stdout=false
+fi
+
+if test $# -lt 1 ; then
+    usage >& 2
+    exit 1
+fi
+
+finish () {
+    set +e
+    if test $1 -ne 0 && test -n "$logfile" && test -f "$logfile" ; then
+        cat "$logfile" >&2
+    fi
+    rm -f "$logfile"
+    exit $1
+}
+
+for i in 1 2 3 10 12 13 15 ; do
+    trap "finish 1" $i
+done
+
+logfile=$(mktemp ,"$self"-"$(basename "$1")".XXXXXX)
+
+set +e
+if $redirect_stdout ; then
+    "$@" > "$logfile" 2>&1
+    status="$?"
+else
+    "$@" 2> "$logfile"
+    status="$?"
+fi
+set -e
+
+finish "$status"

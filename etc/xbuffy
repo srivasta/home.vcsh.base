@@ -1,0 +1,37 @@
+
+box ~/var/spool/mail/important
+title IMP
+origMode
+mailbox
+beep
+polltime 60
+headertime 30
+command emacsclient -e "(let ((this-command 'vm)) (call-interactively 'vm))" &
+
+box ~/var/spool/mail/debian.spool
+title deb
+origMode
+mailbox
+beep
+polltime 60
+headertime 30
+command xterm -fn 7x13 -title "Debian" -e mutt -R -f ~/var/spool/mail/debian.spool &
+
+box ~/var/spool/mail/admin
+title adm
+origMode
+mailbox
+beep
+polltime 60
+headertime 30
+command emacsclient -e "(let ((this-command 'vm-visit-folder)) (vm-visit-folder \"~/mail/ADMIN\"))"
+
+box ~/var/spool/mail/my-cast.spool
+title WTR
+origMode
+mailbox
+beep
+polltime 60
+headertime 30
+command xterm -fn 7x13 -title "my-cast" -e mutt -R -f ~/var/spool/mail/my-cast.spool &
+

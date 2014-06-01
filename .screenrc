@@ -1,0 +1,31 @@
+bindkey -k k1 help                       # F1  | Show help
+register n "^x^c"                        #     | Goes with the F2 definition
+bindkey -k k2 process n                  # F2  | Create new window
+bindkey -k k3 prev                       # F3  | Previous Window
+bindkey -k k4 next                       # F4  | Next Window
+register r "^x:source $HOME/.screenrc^M" #     | Goes with F5 definition
+bindkey -k k5 process r                  # F5  | Reload profile
+bindkey -k k6 detach                     # F6  | Detach from this session
+bindkey -k k7 copy                       # F7  | Enter copy/scrollback mode
+register t "^xA^xa^k^h"                  #     | Goes with the F8 definition
+bindkey -k k8 process t                  # F8  | Re-title a window
+bindkey -k F2 lockscreen                 # F12 | Lock this terminal
+escape ^xx  
+caption always "%{wK}%?%-Lw%?%{bw}%n*%f %t%?(%u)%?%{wK}%?%+Lw%? %= %{= Kw}"
+
+# Our warning of activity
+activity "Activity in %t(%n)"
+
+autodetach on
+defscrollback 65000
+startup_message off
+
+
+
+hardstatus alwayslastline
+hardstatus string '%{= kG}[ %{G}%H %{g}][%= %{=kw}%?%-Lw%?%{r}(%{W}%n*%f %t%?(%u)%?%{r})%{w}%?%+Lw%?%?%= %{g}][%{B}%Y-%m-%d %{W}%c %{g}]‘
+
+# Default screens
+screen -t shell1	0
+screen -t shell2	1
+screen -t server	2 	ssh ladon.golden-gryphon.com

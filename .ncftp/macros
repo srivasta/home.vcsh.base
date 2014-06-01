@@ -1,0 +1,67 @@
+macro l
+	ls -asCF $*
+end
+
+macro ll
+	ls -als $@
+end
+
+macro llt
+	ls -lastr $(1+)
+end
+
+macro pd
+        cd $1   # cd first, then do an ls of it.
+        ls -asCF $(2+)
+end
+
+macro junk
+                echo $5 $4 $3 $2 $1
+end
+
+macro .open.gnu
+	ls -last
+end
+
+macro .open.angband
+	ls -last
+end
+
+macro .open.vm
+	ls -last
+end
+
+macro .open.bxemacs
+        quote site group xemacs
+        quote site gpass zawinski
+	cd /pub/beta
+	ls -last
+end
+
+macro .open.w3
+	ls -last
+end
+
+macro .open.plexus
+	ls -lastR
+end
+
+macro .open.tkld
+	ls -last
+end
+
+macro .start.ncftp
+        echo "Hi.  The time is %I:%M %p."
+end
+
+macro .end.ncftp
+        echo "Exiting NcFTP at %I:%M %p."
+end
+
+macro .open.mortsun
+        echo "You\'re connected to @h."         # Single quote...
+end
+
+macro .close.mortsun
+        echo "Now leaving @h."
+end

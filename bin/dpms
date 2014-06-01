@@ -1,0 +1,6 @@
+  #! /bin/sh
+  echo -n "Setting DPMS for text console: "
+  setterm -blank 5 -powersave on  # dpms on
+  echo -en "\033[9;8]"            # suspend after 10 min
+  echo -en "\033[14;10]"          # off after 30 min
+  echo "done."

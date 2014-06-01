@@ -1,0 +1,143 @@
+#!/pkg/gnu/bin/perl
+
+# Seth Golub <seth@cs.wustl.edu>
+#
+# Uses my bbdb Perl script to grab all the phone numbers from my BBDB
+# file, then formats them nicely for a printed phone list.
+#
+
+require "getopts.pl";
+
+$version = 'Version 0.02';
+
+&Getopts("thvlm:f:") || &Usage();
+
+$tight_numbers = $opt_t;
+$sort_by_lastname = $opt_l;
+$MATCH = $opt_m || "phonelist";
+
+&Usage if $opt_h;
+
+if($opt_v) {
+    print "$version\n";
+    exit;
+}
+
+sub Usage
+{
+    $0 =~ s#.*/##;
+    print STDERR <<EOUsage;
+
+Usage: $0 [options] [user] [user] ...
+
+where options can be:
+     -f <file>    BBDB file (defaults to $BBDB, or to ~/.bbdb)
+     -t           Use tight number format
+     -l           Sort by last name
+     -h           Print this help message, then exit
+     -v           Print version number, then exit
+     -m           match regexp (defaults to "phonelist")
+
+EOUsage
+    exit $opt_h;
+}
+
+
+open(BBDB, sprintf("bbdb %s-n -p phone $MATCH|", $opt_f && "-f $opt_f "))
+    || die "Failed to run bbdb.\n";
+
+@phonelist = <BBDB>;
+
+print "@phonelist\n";
+
+if($tight_numbers)
+{
+    ($name_len, $home_len, $work_len, $extra_len) = (29, 12, 14, 12);
+} else {
+    ($name_len, $home_len, $work_len, $extra_len) = (22, 14, 16, 14);
+}
+
+$slack = 72 - $name_len - $home_len - $work_len - $extra_len;
+
+$| = 1;  # Turn off buffering
+printf("%79s\n", "Generated  " . `date`);
+
+for($i=0; $i <= $#phonelist; $i++)
+{
+    @phones = split(/\t/, $phonelist[$i]);
+    $name = shift(@phones) . " " . shift(@phones);
+    $home = "";
+    $work = "";
+    $extra = "";
+    $extra_name = "";
+    
+    for($j=0; ($j <= $#phones) && (!$home || !$work || !$extra); $j++)
+    {
+        ($_, $num) = $phones[$j] =~ /^(.*): (.*)$/;
+        next if !$_;
+        if($tight_numbers) {
+            ($area, $exch, $tail, $ext) = 
+                $num =~ /^\((\d\d\d)\) (\d\d\d)-(\d\d\d\d) ?x?(\d+)?/;
+            $num = sprintf("%03d/%03d-%04d", $area, $exch, $tail) if $area;
+            $num .= "x$ext" if $ext;
+        }
+        if(/home/i || /phone/i) {
+            $home = $num;
+        } elsif (/work/i) {
+            $work = "W:$num";
+        } elsif (/cell/i) {
+            $extra = $num;
+            $extra_name = "C";
+        } elsif (/parent/i) {
+            $extra = $num;
+            $extra_name = "P";
+        } elsif (/page/i) {
+            $extra = $num;
+            $extra_name = "G";
+        } elsif (/fax/i) {
+            $extra = $num;
+            $extra_name = "X";
+        } else {
+            $extra = $num;
+            $extra_name = "\L$_\E";
+        }
+    }
+
+    # Drop middle names
+    $name =~ s/^([A-Z][A-Za-z]+) ([A-Z][A-Za-z]+\.? )+([A-Z][A-Za-z]+)$/$1 $3/;
+    $name = substr($name, 0, $name_len); # Trim down to size
+
+    $out .= sprintf("%-${name_len}s  %-${home_len}s", $name, $home);
+    $out .= sprintf("  %-${work_len}s", $work) if $work;
+
+    if($extra)
+    {
+        if($work) {
+            $overflow = length($work) - $work_len;
+            $overflow = 0 if $overflow < 0;
+        } else {
+            $overflow = -$work_len - 2;
+        }
+        $avail = $slack - $overflow;
+
+        $out .= sprintf(sprintf("  %%%ds:%%-%ds", $avail, $extra_len),
+                        substr($extra_name, 0, $avail), 
+                        $extra);
+        $extra = "";
+    }
+    $out .= "\n";
+}
+
+if ($sort_by_lastname) {
+    print $out;
+} else
+{
+    open(SORT, "|sort");
+    print SORT $out;
+    close(SORT);
+}
+
+sub max
+{
+    ($_[0] > $_[1]) ? $_[0] : $_[1];
+}

@@ -1,0 +1,124 @@
+#! /usr/bin/perl -w
+# File: clone_repo
+#
+# Copyright © 2009 by Manoj Srivastava
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+#
+#
+# Description:
+# A wrapper around git-clone that recursively populates submodules.
+
+
+use warnings;
+use strict;
+use IO::File;
+
+=head1 NAME
+
+clone_repo - like git-clone, but aware of submodules
+
+=cut
+
+=head1 SYNOPSIS
+
+ usage: clone_repo <repository> [<directory>]
+
+=cut
+
+=head1 DESCRIPTION
+
+Clones a repository into a newly created directory, just like
+C<git-clone>, but it also recursively initializes and updates any
+submodules. For each repository, this creates remote-tracking branches
+for each branch in the cloned repository (visible using git branch
+-r), and creates and checks out an initial branch equal to the cloned
+repository´s currently active branch.
+
+=cut
+
+
+sub find_submodules () {
+  if (-f  ".gitmodules") {
+    my @modules=();
+    my $fh = new IO::File;
+    if ($fh->open("< .gitmodules")) {
+      while (<$fh>) {
+        chomp;
+        next unless /^\s*path\s*=\s*(\S*)/;
+        push @modules, $1;
+      }
+      $fh->close();
+    }
+    foreach my $name (@modules) {
+      chdir $name;
+      &populate_submodules($name);
+      chdir "..";
+    }
+  }
+}
+
+sub populate_submodules () {
+  if (-f ".gitmodules") {
+    system("git submodule init") == 0 or die "submodule init in: `pwd`: $?";
+    system("git submodule update") == 0 or die "submodule update in `pwd`: $?";
+    find_submodules ();
+  }
+}
+
+sub main () {
+  my $repo = $ARGV[0];
+  my $name;
+
+  if ($#ARGV > 0) {
+    $name = $ARGV[1];
+  }
+  else {
+    $name = $ARGV[0];
+    $name =~ s,/$,,;
+    $name =~ s,\.git$,,;
+    $name =~ s,/$,,;
+    $name =~ s,^.*/,,g;
+  }
+
+  # Clone the directory here
+  system("git clone $repo $name") == 0 or die "Could not clone $repo: $?";
+  chdir $name;
+  # Process any submodules, recursively.
+  populate_submodules() if -f ".gitmodules";
+}
+
+&main;
+
+=head1 B<SEE ALSO>
+
+B<git-clone>
+
+=cut
+
+=head1 BUGS
+
+None known so far.
+
+=cut
+
+=head1 AUTHOR
+
+This  was  written by Manoj Srivastava <srivasta@debian.org>.
+
+=cut
+
+
+exit 0;
+__END__

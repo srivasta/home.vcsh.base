@@ -1,0 +1,55 @@
+!
+! This is an `xmodmap' input file for 
+!   Microsoft `Natural' 104 key (Linux/XFree86; US) keyboards.
+! Automatically generated on Sun Mar 29 12:09:46 1998 by srivasta with
+! XKeyCaps 2.42; Copyright (c) 1998 Jamie Zawinski <jwz@netscape.com>.
+! http://people.netscape.com/jwz/xkeycaps/
+!
+! This file presupposes that the keyboard is in the default state, and
+! may malfunction if it is not.
+!
+
+keycode 0x43 =	F1	F11
+keycode 0x44 =	F2	F12
+keycode 0x45 =	F3	F13
+keycode 0x46 =	F4	F14
+keycode 0x47 =	F5	F15
+keycode 0x48 =	F6	F16
+keycode 0x49 =	F7	F17
+keycode 0x4A =	F8	F18
+keycode 0x4B =	F9	F19
+keycode 0x4C =	F10	F20
+keycode 0x6F =	NoSymbol
+keycode 0x6E =	NoSymbol
+keycode 0x4D =	Num_Lock	Caps_Lock
+keycode 0x18 =	q	Q
+keycode 0x19 =	w	W
+keycode 0x1A =	e	E
+keycode 0x1B =	r	R
+keycode 0x1C =	t	T
+keycode 0x1D =	y	Y
+keycode 0x1E =	u	U
+keycode 0x1F =	i	I
+keycode 0x20 =	o	O
+keycode 0x21 =	p	P
+keycode 0x42 =	Control_L
+keycode 0x26 =	a	A
+keycode 0x27 =	s	S
+keycode 0x28 =	d	D
+keycode 0x29 =	f	F
+keycode 0x2A =	g	G
+keycode 0x2B =	h	H
+keycode 0x2C =	j	J
+keycode 0x2D =	k	K
+keycode 0x2E =	l	L
+keycode 0x34 =	z	Z
+keycode 0x35 =	x	X
+keycode 0x36 =	c	C
+keycode 0x37 =	v	V
+keycode 0x38 =	b	B
+keycode 0x39 =	n	N
+keycode 0x3A =	m	M
+
+add    Control = Control_L
+add    Mod2    = Num_Lock
+add Lock    = Caps_Lock

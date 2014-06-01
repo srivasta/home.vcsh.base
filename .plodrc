@@ -1,0 +1,54 @@
+$LOGDIR = $ENV{'LOGDIR'} || "$HOME/var/log";
+$LOGFILE = $ENV{'LOGFILE'} || sprintf("plod%02d%02d", $YY, $MM);
+$DEADLOG = "dead-plod.log";
+$STAMP = sprintf("%02d:%02d:%02d, %02d:%02d --", $YY, $MM, $DD, $hh, $mm);
+$CRYPTCMD = '';
+
+##$LOGFILE = $ENV{'LOGFILE'} || sprintf("plod%02d%02d.pgp", $YY, $MM);
+##$CRYPTCMD = "/usr/local/share/scripts/pgp-auto";
+##$DECRYPTCMD = "/usr/local/share/scripts/pgp-auto";
+##$USER = "Manoj Srivastava" ;
+##
+##sub encrypt {
+##    local($key, $inputfl, $outputfl) = @_;
+##    local($safekey, $safeinp, $safeout);
+##    
+##    unlink($outputfl);
+##    $key = $USER;
+##
+##    if ($PROMPT) {       # Prompt for $KEYVAL if $PROMPT has been set
+##	print "File is $file";
+##	print "Please enter userid to encrypt for: ";
+##	#system 'stty', '-echo';
+##	chop($key = <STDIN>);
+##	#system 'stty', 'echo';
+##	print "0";
+##    }
+##    
+##    ($safekey = $key) =~ s/(W)/\$1/g;
+##    ($safeinp = $inputfl) =~ s/(W)/\$1/g;
+##    ($safeout = $outputfl) =~ s/(W)/\$1/g;
+##    !(system("$CRYPTCMD -feast \'$safekey\' < $safeinp >$safeout") >> 8);
+##}
+##
+##sub decrypt {
+##    local($key, $inputfl, $outputfl) = @_;
+##    local($safekey, $safeinp, $safeout);
+##    
+##    unlink($outputfl);
+##    
+##    if ($PROMPT) {       # Prompt for $KEYVAL if $PROMPT has been set
+##	print "File is $file.0";
+##	print "Please enter encryption key: ";
+##	#system 'stty', '-echo';
+##	chop($key = <STDIN>);
+##	#system 'stty', 'echo';
+##	print "0";
+##    }
+##    
+##    ($safekey = $key) =~ s/(W)/\$1/g;
+##    ($safeinp = $inputfl) =~ s/(W)/\$1/g;
+##    ($safeout = $outputfl) =~ s/(W)/\$1/g;
+##    !(system("$DECRYPTCMD  -f  < $safeinp >$safeout") >> 8);
+##}
+##

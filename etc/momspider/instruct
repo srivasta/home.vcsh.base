@@ -1,0 +1,26 @@
+<Site
+    Name          Manoj Srivastava
+    TopURL        http://www.pilgrim.umass.edu/%7Esrivasta/index.html
+    IndexURL      http://www.pilgrim.umass.edu/var/%7Esrivasta/momspider.html
+    IndexFile     /users/pilgrim_staff/srivasta/public_html/momspider.html
+    EmailAddress  srivasta@pilgrim.umass.edu
+    EmailBroken
+    EmailRedirected
+    Exclude	  http://www.pilgrim.umass.edu/%7Esrivasta/scripts/
+    Exclude	  http://www.pilgrim.umass.edu/%7Esrivasta/cgi-bin/
+    Exclude       http://www.pilgrim.umass.edu/pub/
+    Exclude       http://www.pilgrim.umass.edu/alpha/
+    Exclude       http://www.pilgrim.umass.edu/bin/
+    Exclude       http://www.pilgrim.umass.edu/cgi-bin/
+    Exclude       http://www.pilgrim.umass.edu/cgi-eg/
+    Exclude       http://www.pilgrim.umass.edu/common/
+    Exclude       http://www.pilgrim.umass.edu/dev/
+    Exclude       http://www.pilgrim.umass.edu/etc/
+    Exclude       http://www.pilgrim.umass.edu/hppa/
+    Exclude       http://www.pilgrim.umass.edu/incoming/
+    Exclude       http://www.pilgrim.umass.edu/lib/
+    Exclude       http://www.pilgrim.umass.edu/man/
+    Exclude       http://www.pilgrim.umass.edu/sbin/
+    Exclude       http://www.pilgrim.umass.edu/usr/
+    Exclude       http://www.pilgrim.umass.edu/var
+>

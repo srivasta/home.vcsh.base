@@ -1,0 +1,166 @@
+#!/local/bin/perl 
+
+# Copyright (C) 1993 Cengiz Alaettinoglu 
+# Cengiz Alaettinoglu <ca@cs.umd.edu>
+
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 1, or (at your option)
+# any later version.
+
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+
+# A copy of the GNU General Public License can be obtained from this
+# program's author (send electronic mail to the above address) or from
+# Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+
+$email_sep = " ";
+$silent = 0;
+
+while ($#ARGV >= 0) {
+    $_ = shift;
+    /^-a/ && ($all = 1) && next;
+    /^-f/ && ($pgm = "/usr/ucb/finger %s") && next;
+    /^-i/ && ($pgm = "/usr/ucb/finger %s | egrep -i '(idle|On since)'") && next;
+    /^-ra/ && ($pgm = "/usr/ucb/rwho -a | egrep -i '^(%s)'") && ($email_sep = " |") && ($all = 2) && next;
+    /^-r/ && ($pgm = "/homes/ca/bin/rwho.perl | egrep -i '^(%s)'") && ($email_sep = " |") && ($all = 2) && ($silent = 1) && next;
+    /^-m/ && ($pgm = "/usr/ucb/mail %s") && next;
+    /^-t/ && ($pgm = "/usr/ucb/talk %s") && next;
+    /^-o/ && ($pgm = "/usr/ucb/otalk %s") && next;
+    $user = $_;
+}
+
+open(BBDB, "$ENV{HOME}/.bbdb") || die "$0: Can't open bbdb database";
+@save = <BBDB>;
+
+@save = grep(!/^;/, @save);
+@save = grep(/$user/i, @save);
+@save = grep(chop && chop && s/^\[/ /o, @save);
+@bbdb = grep(do choose_exact($_), @save);
+if ($#bbdb < 0) {
+    @bbdb = grep(do choose_partial($_), @save);
+}
+
+do bbdb_exec();
+
+exit 0;
+end;
+
+sub bbdb_exec {
+    for ($i=0; $i <= $#bbdb; $i++) {
+	($name, $lname, $alias, $org, $phone, $address, $email, $notes, $nil) =
+	    do get_fields($bbdb[$i]);
+	if ($all == 0) {
+	    ($email) = do get_fields($email);
+	} elsif ($all == 2) {
+	    ($email) = do get_fields($email);
+	    $email =~ s/[@%].*$//;
+	}
+	$i && ($email_list = "$email_list$email_sep");
+	$email_list = "$email_list$email";
+	@mailalias = 
+	    grep(s/mail-alias \. "(.*)"/$1/, do get_fields($notes)); 
+	if (!$silent) {
+	    printf "%s %s %s %s\n", $name, $lname, "(@mailalias)", $email;
+	}
+    }
+    $pgm =~ s/%s/$email_list/;
+    $pgm && exec $pgm;
+}
+
+sub choose_exact {
+     local($name, $lname, $alias, $org, $phone, 
+	   $address, $email, $notes, $nil) = do get_fields($_);
+     local(@mailalias) = 
+	 grep(s/mail-alias \. "(.*)"/$1/, do get_fields($notes)); 
+    
+     return (join(" ", $name, $lname, $alias, @mailalias) =~ /\b$user\b/i);
+}
+
+sub choose_partial {
+     local($name, $lname, $alias, $org, $phone, 
+	   $address, $email, $notes, $nil) = do get_fields($_);
+     local(@mailalias) = 
+	 grep(s/mail-alias \. "(.*)"/$1/, do get_fields($notes)); 
+    
+     return (join(" ", $name, $lname, $alias, @mailalias) =~ /$user/i);
+}
+
+sub get_fields {
+    local ($i) = 0;
+    local (@field);    
+    local ($j) = 0;
+
+
+    $j = 0;
+    while ($j < length($_[0])) {
+	if (substr($_[0], $j, 1) eq '"') {
+	    ($j, $field[$i++]) = do match_string($_[0], $j);
+	}
+	elsif (substr($_[0], $j, 1) eq '(') {
+	    ($j, $field[$i++]) = do match_parent($_[0], $j);
+	}
+	elsif (substr($_[0], $j, 1) ne ' ') {
+	    ($j, $field[$i++]) = do match_word($_[0], $j);
+	}
+	else {
+	    $j ++;
+	}
+    }
+    return @field;
+}
+
+sub match_string {
+    local ($i) = $_[1];
+
+    $i++;
+    for (; $i < length($_[0]); $i++) {
+	if (substr($_[0], $i, 1) eq '"') {
+	    $i++;
+	    return ($i, substr($_[0], $_[1]+1, $i - $_[1] - 2));
+	}
+    }
+
+    return ($i, substr($_[0], $_[1]+1));
+}
+
+sub match_word {
+    local ($i) = $_[1];
+
+    for (; $i < length($_[0]); $i++) {
+	if (substr($_[0], $i, 1) eq ' ') {
+	    return ($i, substr($_[0], $_[1], $i - $_[1]));
+	}
+    }
+
+    return ($i, substr($_[0], $_[1]));
+}
+
+sub match_parent {
+    local ($i) = $_[1];
+    local ($skip) ;
+    $stack = 1;
+    $i++;
+
+    for (; $i < length($_[0]); $i++) {
+	if (substr($_[0], $i, 1) eq '"') {
+	    ($i, $skip) = do match_string($_[0], $i);
+	    $i --;
+	}
+	elsif (index("([", substr($_[0], $i, 1)) >= 0) {
+	    $stack++;
+	}
+	elsif (index("])", substr($_[0], $i, 1)) >= 0) {
+	    $stack--;
+	    if ($stack == 0) {
+		$i++;
+		return ($i, substr($_[0], $_[1]+1, $i - $_[1] - 2));
+	    }
+	}
+    }
+
+    return ($i, substr($_[0], $_[1]+1));
+}

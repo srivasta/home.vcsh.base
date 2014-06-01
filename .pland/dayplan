@@ -1,0 +1,12 @@
+plan V1.8
+o	s-m--w--wus-c- 0 0 80600 4 23 7
+O	-------------------------
+t	0 21600 2 64 220
+e	w-- 
+l	w-- 
+a	w-- 
+y	---------- 1 0 0
+P	---------- 0
+p	an V1.8
+m	Mail -s %s srivasta
+u	srivasta        /home/srivasta/.pland/dayplan 0  0 0 1 0 0 glaurung 0

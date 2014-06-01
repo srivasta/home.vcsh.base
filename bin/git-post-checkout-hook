@@ -1,0 +1,6 @@
+#!/bin/sh
+
+for f in `git ls-tree --name-only -r HEAD`; do
+   mtime=`git log -n1 --date=iso --pretty=%ai -- $f`
+   touch -m -d "$mtime" $f
+done

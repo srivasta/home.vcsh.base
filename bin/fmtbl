@@ -1,0 +1,232 @@
+#!/usr/bin/perl
+#                              -*- Mode: Perl -*- 
+# junk.pl --- 
+# Author           : Manoj Srivastava ( srivasta@mecca.pilgrim.umass.edu ) 
+# Created On       : Sun Mar 21 23:56:21 1993
+# Created On Node  : mecca.pilgrim.umass.edu
+# Last Modified By : Manoj Srivastava
+# Last Modified On : Sun Apr  4 00:53:50 1993
+# Last Machine Used: graceland.pilgrim.umass.edu
+# Update Count     : 152
+# Status           : Unknown, Use with caution!
+# HISTORY          : 
+# Description      : 
+# 
+# 
+
+require 'getoption.pl';
+
+format STDOUT =
+~~  ^<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+    $author
+~~  ^<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+    $title
+~~  ^<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+    $publisher
+~~  ^<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+    $year
+~~  ^<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+    $pages
+~~  ^<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+    $subject
+~~  ^<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+    $suggested
+~~  ^<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+    $cost
+~~  ^<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+    $keywords
+~~  @*
+    $comment
+~~  ^<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+    $isbn
+}
+
+
+
+.
+
+sub quote{
+    $title =      "title       = \"$title\",";
+    $author =     "author      = \"$author\",";
+    $publisher =  "publisher   = \"$publisher\",";
+    $year =       "year        = \"$year\",";
+    $pages =      "pages       = \"$pages\","     if $pages;
+    $suggested =  "recommender = \"$suggested\"," if $suggested;
+    $subject =    "subject     = \"$subject\","   if $subject;
+    $cost =       "cost        = \"$cost\","      if $cost;
+    $keywords =   "keywords    = \"$keywords\","  if $keywords;
+    $comment =    "comment     = \"$comment\","   if $comment;
+    $isbn =       "annote      = \"$isbn\","      if $isbn;
+}
+
+sub genkey {
+    $junk = $author;
+    $junk =~ s/\band\b//og;
+    $junk =~ s/,//og;
+    ($part1,$part2,$part3) = split (/\W/, $junk,3);
+    $key = $part1  . "." . $part2;
+    $junk = $title;
+    $junk =~ s/^A\b|^The\b//o;
+    $junk =~ s/^\W+//og;
+    ($part1,$part2,$part3) = split (/\W/, $junk, 3);
+    $key .= ":" . $part1 ;
+    if (defined ($Keys{$key}))
+    {
+	print STDERR "\t\tduplicate $key\n";
+	 $key .= "[" . $Gensym++. "]";
+     }
+    $Keys{$key}++;
+}
+
+$Debug  = 0;
+$File='';
+$Gensym = "000";
+$Warning = 0;
+$Verbose=0;
+
+$TitleReg= '^TITLE:\W*(.*)$';
+$AuthorReg =  '^AUTHOR: (.*)$';
+$SubjectReg = '^SUBJECT:(.*)$';
+$SuggestedReg = '^SUGGESTED_BY:(.*)$';
+$PublisherReg = '^PUBLISHER:(.*)$';
+$DateReg = '^DATE:(.*)$';
+$PagesReg = '^PAGES:(.*)$';
+$IsbnReg = '^(ISBN:.*)$';
+$CostReg = '^APPROX_COST:(.*)$';
+$KeywordsReg = '^KEYWORDS:(.*)$';
+$CommentReg = '^\s+(.*)$';
+
+chop($Prog = `basename $0`);
+
+$options = 'd{debug}:f{file}:v{verbose}--';
+
+$usage = <<END_OF_USAGE;
+ usage: $Prog
+    [-d] [--debug]     # Turn on debug mode       [off]
+    [-f] [--file]      # Configuration file       [none]
+    [-v] [--verbose]     Generate verbose output. [off]
+ 
+END_OF_USAGE
+
+while($opt = &getoption ($options,*ARGV )) {
+    # 
+    $o = substr($opt,0,1);
+    
+    if ($o eq 'd'){
+        $Debug=1;
+        next;
+    }
+    
+    if ($o eq 'f'){
+        $File=$main'go_argument; # ';
+        next;
+    }
+
+    if ($o eq 'v'){
+        $Verbose=1;
+        next;
+    }
+
+
+    if ($o eq '?') {       # Error.
+        $opt =~ s/^\?\-?//;
+        print STDERR $Prog,': Unknown option: ',$opt,"\n\n";
+        die $usage;
+    }
+
+    if ($o eq '-' || $o eq "\0"){
+        last;
+    }
+}
+
+open (FILE, "$File") || die " could not open $File:$!\n";
+
+while (<FILE>){
+    chop ($Line = $_) ;
+    next if $Line =~ /^\s*$/;
+    next if $Line =~ /^#/;
+    $Line =~ /^TitleReg:\s*"(.*)"\s*$/o &&
+        do { $TitleReg=$1; next; };
+    $Line =~ /^AuthorReg:\s*"(.*)"\s*$/o &&
+        do { $AuthorReg = $1; next; }; 
+    $Line =~ /^SubjectReg:\s*"(.*)"\s*$/o &&
+        do { $SubjectReg = $1; next};
+    $Line =~ /^SuggestedReg:\s*"(.*)"\s*$/o &&
+        do { $SuggestedReg = $1; next; };
+    $Line =~ /^PublisherReg:\s*"(.*)"\s*$/o &&
+        do { $PublisherReg = $1; next; };
+    $Line =~ /^DateReg:\s*"(.*)"\s*$/o &&
+        do { $DateReg = $1; next; };
+    $Line =~ /^PagesReg:\s*"(.*)"\s*$/o &&
+        do { $PagesReg = $1; next; };
+    $Line =~ /^IsbnReg:\s*"(.*)"\s*$/o &&
+        do { $IsbnReg = $1; next; };
+    $Line =~ /^CostReg:\s*"(.*)"\s*$/o &&
+        do { $CostReg = $1; next; };
+    $Line =~ /^KeywordsReg:\s*"(.*)"\s*$/o &&
+        do { $KeywordsReg = $1; next; };
+    $Line =~ /^CommentReg:\s*"(.*)"\s*$/o &&
+        do { $CommentReg = $1; next; };
+}
+
+while (<>){
+    chop($Line = $_);
+    $Line =~ s/-/--/g;
+    $Line =~ s/\&/\\&/g;
+    $Line =~ s/\@/\\@/g;
+    $Line =~ s/\.\.\./\\ldots /g;
+    $Line =~ s/\*/\\*/g;
+    $Line =~ s/\"/``/g && $Warning++;
+    $Warning++,
+    print STDERR "Warning: edit double open quotes in output\n"
+	if ($Warning == 1);
+    print STDERR "\tLine = ($Line)\n" if $Debug;
+    $Line =~ /$TitleReg/ &&
+	do {
+	    if ($title){
+		&genkey;
+		print "\@Book{$key,\n";
+		&quote;
+		write;
+	    }
+	    reset 'a-z'; $title = $+;
+	    next;
+	};
+    $Line =~ /$AuthorReg/ &&
+	do {
+	    $author .= " and " if $author;
+	    $author .= $+ if $author;	#
+	    $author = $+ if ! $author;
+	    next;
+	};			# 
+    $Line =~ /$PublisherReg/ &&
+	do {
+	    $publisher = $+;
+	    next;
+	};
+    $Line =~ /$DateReg/ &&
+	do {
+	    $year = $+;
+	    next;
+	};
+    $Line =~ /$IsbnReg/ &&
+	do {
+	    $isbn .= ", " if $isbn;
+	    $isbn .= $+ if $isbn;
+	    $isbn = $+ if !$isbn;
+	    next;
+	};
+    $Line =~ /$KeywordsReg/ &&
+	do {
+	    $keywords = $+;
+	    next;
+	};
+    $Line =~ /$CommentReg/o &&
+	do {
+            
+	    $comment .= "\n$+ " if $comment;
+	    $comment = "\n $+ " if !$comment;
+	    next;
+	};
+}
+

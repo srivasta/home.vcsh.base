@@ -1,0 +1,2 @@
+#!/bin/bash 
+grep -i -h $1 $HOME/var/lib/contacts/bbdb | $HOME/bin/phone.pl

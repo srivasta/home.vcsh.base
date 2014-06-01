@@ -1,0 +1,73 @@
+#!/usr/bin/perl 
+##
+## prunepwd.pl - Prune a `pwd` string 
+## 
+## prunepwd prunes the current working directory path to a size that
+## is reasonable for a prompt.  The size limit is specified by
+## optional command line argument.  The default is 25.
+## 
+## If the path is a descendent of the home directory path, the leading
+## home directory path is replaced with ``~''.  Otherwise, a leading
+## //node_name (ala Apollo) is replaced with ``node_name:''.
+## Directories are trimmed from the beginning of the path (following
+## the node name) until the path length (including node name) is less
+## than the limit.  The last directory in the path is never pruned,
+## even if its length exceeds the limit.  The set of pruned
+## directories is replaced by ``...''.
+## 
+## Examples:
+## 
+## //blast/usr/abc/def/ghi/jkl/mno/pqr/stu/vwx      (before)
+## blast:/.../pqr/stu/vwx                           (after)
+## 
+## //blast/user/mse/learn/perl/chapter1             (before)
+## ~/learn/perl/chapter1                            (after)
+##
+$pwdsz = shift || 25;		# limit for pwd string
+chop($cwd=`pwd`);
+chdir ($ENV{'HOME'});
+chop($home=`pwd`);
+###print "$cwd $home\n";
+if ($cwd eq "//"){
+    print $cwd;
+    exit ();
+}
+if (index ($cwd, $home) == 0) {
+    $node = "";
+    $cwd = "~" . substr ($cwd, length ($home));
+} else {
+    if ($cwd =~ m|^//|) {
+	## Apollo style path (//node/path/...)
+        ($node, $cwd) = ($cwd =~ m|//([^/]*)(.*)|o);
+	$node .= ":";
+    } else {
+        ## Unix style path (/path/...)
+        $node = "";
+    }
+}
+$len = length ($node) + length ($cwd);
+if ($len > $pwdsz) {
+    @path = split (/\//, $cwd);
+    ##
+    ## always leave the final component of the path even if its
+    ## length is greater than the limit.
+    ##
+    if ($#path > 1) {
+        ##
+        ## Find number of leading components in path to skip
+        ##
+        for ($skip = 0; $len > $pwdsz && $skip < ($#path); $skip++) {
+	    $len -= (length ($path[$skip]) + 1);
+	    if ($skip == 0) {
+	        $len += 3;	# length of "..."
+	    }
+	}
+        $path[$skip-1] = "...";
+	if ($skip > 1) {
+	    splice (@path, 0, $skip-1 );
+	}
+    }
+    $cwd =  join ("/", @path);
+}
+print $node, $cwd;
+

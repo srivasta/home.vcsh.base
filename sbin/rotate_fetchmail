@@ -1,0 +1,31 @@
+#!/bin/bash
+#                               -*- Mode: Sh -*- 
+# rotate_fetchmail --- 
+# Author           : Manoj Srivastava ( srivasta@glaurung.green-gryphon.com ) 
+# Created On       : Thu Sep  5 16:59:10 2002
+# Created On Node  : glaurung.green-gryphon.com
+# Last Modified By : Manoj Srivastava
+# Last Modified On : Tue Sep 15 08:24:18 2009
+# Last Machine Used: anzu.internal.golden-gryphon.com
+# Update Count     : 4
+# Status           : Unknown, Use with caution!
+# HISTORY          : 
+# Description      : 
+# 
+# 
+
+LOGDIR=$HOME/var/log
+YEAR=$(date -d yesterday +%Y)
+MONTH=$(date -d yesterday +%m)
+
+="fetchmail.mail.golden-gryphon.com.log fetchmail.pop.business.earthlink.net.log fetchmail.pop.dtccom.net.log"
+
+for logfile in $LOGFILES; do
+    $logfile
+    if [ -f $LOGDIR/$YEAR.$MONTH.$logfile ]; then
+        mv -f $LOGDIR/$YEAR.$MONTH.$logfile.bz2 $LOGDIR/$YEAR.$MONTH.$logfile.old.bz2
+    fi
+    
+    mv -f $LOGDIR/$logfile $LOGDIR/$YEAR.$MONTH.$logfile
+    bzip2 $LOGDIR/$YEAR.$MONTH.$logfile
+done

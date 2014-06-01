@@ -1,0 +1,49 @@
+SHELL=/bin/bash    
+PERL=/usr/bin/perl            
+PATH=/usr/bin:/bin:/usr/bin/X11:/sbin:/usr/sbin:/usr/local/bin
+MAILTO=srivasta
+NNTPSERVER=localhost
+KEYRING=rsync://keyring.debian.org/keyrings/keyrings
+SECLIB=lib/.sec/
+#m      h   dom month dow command
+
+# Clean things up
+0,30    0-23 * * *   /usr/bin/find $HOME/var/spool/mail -type f -size 0 -exec rm {} \; > /dev/null 2>&1 
+15      0-23 * * *   /usr/bin/find $HOME/var/tmp -name 'Incoming*' -mtime +1 -exec rm {} \; > /dev/null 2>&1
+50      2    * * 3,7 /usr/bin/find $HOME/var/spool/news/nnml -name "^[0-9]*$" -mtime +30 -print0 | xargs -0r bzip2 -9
+50      2    2 * *   /usr/bin/find /backup/mail -type f -name "[0-9_]*" -mtime +30 -print0 | xargs -0r bzip2 -9
+
+34      3    * * *   ($HOME/sbin/check_watch)&
+44      3    * * *   ($HOME/sbin/kernel-alert )&
+12      4    * * *   ikiwiki --setup $HOME/.ikiwiki/manoj  --refresh >> $HOME/var/log/ikiwiki-build.log 2>&1 &
+14      5    * * *   ($HOME/sbin/index-files >& $HOME/var/log/index.log )&
+52      7    * * 4   ($HOME/sbin/machine-update -m)&
+0       0    1 * *   ($HOME/sbin/rotate_agentlog)&
+24      4    * * *   (rsync -az keyring.debian.org::keyrings/keyrings/debian-keyring.gpg ~/lib/.sec/debian-keyring.gpg)
+
+# refresh my keys
+# Note how I have to dance around keyring specification
+45      4    *  * 4   (/usr/bin/gpg2 --homedir ~/lib/.sec --refresh-keys $(/usr/bin/gpg2 --options /dev/null --homedir ~/lib/.sec --no-default-keyring --keyring pubring.gpg --with-colons --fixed-list-mode --list-keys | egrep '^pub' | cut -f5 -d: | sort -u) >>$HOME/var/log/gpg.log 2>&1)
+# Get keys for new sigs on my keys (get my key by default, in case 
+# there are no unknown user IDs [do not want to re-get all keys])
+44      4    *  * 5  (/usr/bin/gpg2 --homedir ~/lib/.sec --recv-keys 0xC5779A1C $(/usr/bin/gpg2  --options  /dev/null --homedir ~/lib/.sec --no-default-keyring --keyring pubring.gpg --with-colons --fixed-list-mode --list-sigs 0xC5779A1C | egrep '^sig:' | grep 'User ID not found' | cut -f5 -d: | sort -u) >>$HOME/var/log/gpg.log 2>&1)
+44      4    *  * 6  (for i in keyring.debian.org keys.sflc.info keyserver.gingerbear.net keyserver.nausch.org keyserver.stack.nl pgpkeys.co.uk sks.mrball.net keyserver.siccegge.de pool.sks-keyservers.net pgp.surfnet.nl wwwkeys.ch.pgp.net ; do  /usr/bin/gpg2 --keyserver $i --homedir ~/lib/.sec --send-keys 0xC5779A1C $(/usr/bin/gpg2  --options  /dev/null --homedir ~/lib/.sec --no-default-keyring --keyring pubring.gpg --with-colons --fixed-list-mode --list-sigs 0xC5779A1C | egrep '^sig:' | cut -f5 -d: | sort -u); done >>$HOME/var/log/gpg.log 2>&1)
+
+# Run fetchmail for mailing lists and all (this runs it on inbox, and uses idle)
+@reboot              ($HOME/sbin/run-fetchmail >& $HOME/var/log/pop.log ) &
+
+# Now collect spam. We need to do at least two runs, 30 minutes apart, for each session
+1,31,59  9,21 * * *   (/usr/bin/fetchmail --invisible smtp.golden-gryphon.com  >& $HOME/var/log/pop.log ) &
+#1-59/12 *    * * *   (/usr/bin/fetchmail --invisible  >& $HOME/var/log/pop.log ) &
+
+##30    *    * * *   ($HOME/sbin/process-learn.sh)&
+
+#12,42   0-23 * * *  ($HOME/sbin/convert_html.sh)&
+
+# Watch ftp sites
+#14     4    * * *   (/usr/bin/lurkftp -F $HOME/etc/checksite  )&
+
+#update tla completions
+##17      3    * * 7   ($HOME/sbin/gen-opt-cache)&
+
+#44      6    * * *   ($HOME/sbin/do-gnus >& $HOME/var/log/gnus.log )&

@@ -1,0 +1,14 @@
+#!/bin/sh
+
+# http://mislav.uniqpath.com/2010/07/git-tips/
+feature=$1
+# rebases and merges $1 into the current branch
+# git checkout $feature && git rebase @{-1} && git checkout @{-2} && git merge @{-1}
+
+# The special "@{-n}" syntax means "n-th branch checked out before
+# current one". When we checkout "feature", "@{-1}" is a reference to
+# branch we were on (like, say, master)). After rebasing, we need to
+# use "@{-2}" to checkout "master"" because "@{-1}" is a reference to
+# the same branch ("feature") due to how rebasing works internally.
+
+git rebase HEAD $feature && git rebase HEAD @{-2}

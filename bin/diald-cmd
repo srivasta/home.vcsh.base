@@ -1,0 +1,22 @@
+#! /bin/sh
+# diald-cmd - script to control the diald program
+
+if [ "${1:-help}" != "help" ]; then
+   for CMD in $*; do
+      echo ${CMD} > /etc/diald/diald.ctl
+   done
+else
+   echo " "; echo " "
+   echo "usage: `basename ${0}` option     where option is:"
+   echo " "; echo " "
+   echo "block ......... hang up and block new calls"
+   echo "unblock ....... remove the effect of block"
+   echo "force ......... call, and stay up until \"unforce\""
+   echo "unforce ....... remove the effect of force"
+   echo "down .......... force the link down"
+   echo "up ............ force the link up"
+   echo "delay-quit .... terminate when current link goes idle"
+   echo "quit .......... force link down and terminate"
+   echo "reset ......... reset & re-read configuration options"
+   echo "debug <flags> . set the debug flags to the given value"
+fi

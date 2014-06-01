@@ -1,0 +1,39 @@
+#!/bin/zsh
+
+set -e
+
+NEWDIR=/usr/local/src/tmp
+WORKDIR=/usr/local/src/debian
+
+while test $# -gt 0 ; do
+    pkg=$1
+    shift
+    if [[ ! -d $NEWDIR/$pkg ]]; then
+        echo >&2 "no package found at $NEWDIR/$pkg, ignoring"
+        continue
+    fi
+    if [[ -d $WORKDIR/$pkg ]]; then
+        echo >&2 "$WORKDIR/$pkg already exists, ignoring"
+        continue
+    fi
+    mkdir -p $WORKDIR/$pkg 
+    git clone --bare $NEWDIR/$pkg $WORKDIR/$pkg/${pkg}.git
+    echo "The $pkg Package" > $WORKDIR/$pkg/${pkg}.git/description
+    chmod a+x $WORKDIR/$pkg/${pkg}.git/hooks/post-update;
+    scp -r $WORKDIR/$pkg/${pkg}.git git.debian.org:public_git/debian/
+    ssh git.debian.org chmod a+xr public_git/debian/${pkg}.git
+    rm -rf $WORKDIR/$pkg/${pkg}.git
+    cp -a $NEWDIR/$pkg $WORKDIR/$pkg/
+    (cd $WORKDIR/$pkg/$pkg; git remote add -m master origin ssh://srivasta@git.debian.org/~srivasta/public_git/debian/${pkg}.git)
+    (cd $WORKDIR/$pkg/$pkg; git config branch.master.remote origin; git config branch.master.merge refs/heads/master)
+    (cd $WORKDIR/$pkg/$pkg; git pull)
+    (cd $WORKDIR/$pkg/$pkg; git submodule add -b $pkg git://git.debian.org/~srivasta/debian/debian-dir.git debian)
+    perl -pli -e 's,srivasta/debian-common.git,srivasta/debian/debian-common.git,' $WORKDIR/$pkg/$pkg/debian/.gitmodules
+    (cd $WORKDIR/$pkg/$pkg/debian/; git pull)
+    (cd $WORKDIR/$pkg/$pkg/debian/; git submodule init; git submodule update; git add .gitmodules; git status)
+    (cd $WORKDIR/$pkg/$pkg/debian/; git commit -s -m'Updated location of the common submodule repository.')
+    (cd $WORKDIR/$pkg/$pkg; git add debian; git commit -s -m'Added the debian submodule.')
+    perl -pli -e 's,git://git.debian.org/~srivasta/debian/debian-dir.git,ssh://srivasta\@git.debian.org/~srivasta/public_git/debian/debian-dir.git,' $WORKDIR/$pkg/$pkg/debian/.git/config 
+    (cd $WORKDIR/$pkg/$pkg; git push)
+    (cd $WORKDIR/$pkg/$pkg/debian/; git push)
+done

@@ -1,0 +1,23 @@
+email_to	srivasta@internal.golden-gryphon.com
+script	none
+sendmail	/usr/lib/sendmail -t -i
+mirror	ftp.us.kernel.org
+working_directory	/usr/local/src/kernel
+delete_patches	1
+compression	bz2
+kernel	2.0	0	2.0.40
+kernel	2.4	0	2.4.37.5
+kernel	-ac	1	2.6.11-ac7
+kernel	longterm	1	2.6.27.59
+kernel	prepatch-2.2	0	2.2.27-rc2
+kernel	-mm	1	2.6.28-rc2-mm1
+kernel	linux-next	1	next-20110831
+kernel	snapshot-stable	1	2.6.31-rc7-git3
+kernel	2.2	0	2.2.26
+kernel	mainline	1	3.1-rc4
+kernel	snapshot-2.4	1	2.4.31-pre2-bk3
+kernel	snapshot	1	3.1-rc4-git2
+kernel	prepatch-stable	1	2.6.31-rc7
+kernel	stable	1	2.6.37.6
+kernel	prepatch-2.4	0	2.4.37-rc2
+email_from	srivasta@internal.golden-gryphon.com

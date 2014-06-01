@@ -1,0 +1,13 @@
+#! /bin/sh5
+TZ=PST8PDT7,M4.1.0,M10.5.0 xclock -geometry 100x100+686+900 -name PST 2> /dev/null &
+sleep 1
+
+TZ=MST7MDT6,M4.1.0,M10.5.0 xclock -geometry 100x100+786+900 -name MST 2> /dev/null &
+sleep 1
+
+
+TZ=CST6CDT5,M4.1.0,M10.5.0 xclock -geometry 100x100+886+900 -name CST 2> /dev/null &
+sleep 1
+
+
+TZ=EST5EDT4,M4.1.0,M10.5.0 xclock -geometry 100x100+986+900 -name EST 2> /dev/null &

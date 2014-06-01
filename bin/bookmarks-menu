@@ -1,0 +1,154 @@
+#!/usr/bin/perl
+# v0.1a - alex pleiner <alex-fvwm@zeitform.de>
+# code is GPL - use at own risk
+
+## modules
+use strict;
+use HTML::TreeBuilder;
+use MIME::Base64;
+use Digest::MD5 qw(md5_hex);
+use Image::Magick;
+
+## config
+my $file          = "$ENV{HOME}/var/state/bookmarks.html";
+my $max_length    = 40;
+my $basemenu      = "start";
+my $bookmark_icon = "/usr/share/icons/crystalsvg/16x16/actions/bookmark.png";
+my $folder_icon   = "/usr/share/icons/crystalsvg/16x16/actions/bookmark_folder.png";
+my $menu_prefix   = "bookmarks_";
+my $command       = "mozilla";
+my $favicon_dir   = "$ENV{HOME}/var//tmp"; ## check if exists
+
+## variables
+my (%menu, %files, %id);
+my $c=1;
+
+## supported icon types
+my %magick = ( "image/png" => "png", "image/gif" => "gif", "image/x-icon" => "ico" );
+
+## treebuilder
+my $tree = HTML::TreeBuilder->new; # empty tree
+open(my $fh, "<:utf8", $file) || die;
+$tree->parse_file($fh);
+
+## init root menu
+$menu{$basemenu} = menustart($basemenu);
+
+## iterate
+foreach my $f ($tree->descendants) {
+  ## skip unless folder, item or separator
+  next unless $f->tag eq "a" or $f->tag eq "hr" or $f->tag eq "h3";
+
+  ## parent
+  my $pid;
+  if ($f->depth == 4 && defined $f->attr("personal_toolbar_folder")) {
+    # we might wish to do something different here ....
+    # $menu{$basemenu} .= menusubmenu($c, $f->as_text);
+    $pid = $basemenu;
+  }
+  elsif ($f->depth == 4) {
+    $pid = $basemenu;
+  }
+  else {
+    my $parent = ($f->look_up("_tag", "dt"))[1] || $basemenu;
+    $id{$parent} ||= $c++;
+    $pid = $id{$parent};
+  }
+
+  ## debug
+  #print $f->tag, "-", $f->depth, " - ", $f->address, "-", $pid, "-$c-", $f->as_text, "\n";
+
+  ## bookmarkitem
+  if ($f->tag eq "a") {
+    my $filename;
+
+    ## favicon
+    if (my $icon = $f->attr("icon")) {
+      my ($type,$encoding,$data) = ($icon =~ /^data:([^\/]+?\/[^;]+);(\w+?),(.+)$/);
+      #print "found icon $type - $encoding\n";
+
+      ## supported
+      if ($encoding eq "base64" && defined $magick{$type}) {
+        my $name = md5_hex($data);
+
+        ## not yet created
+        if (! defined $files{$name}) {
+          $files{$name} = sprintf("%s/%s.png", $favicon_dir, $name);
+
+          unless (-r $files{$name}) {
+            my $image=Image::Magick->new(magick=>$magick{$type});
+            $image->BlobToImage(decode_base64($data));
+            $image->Resize(geometry=>"16x16");
+            defined $image->[0]
+              ? $image->[0]->Write($files{$name})
+                : $image->Write($files{$name});
+            #$image->Write($files{$name});
+          }
+        }
+        $filename = $files{$name};
+      }
+    }
+
+    $menu{$pid} .= menuitem($f->as_text, $f->attr("href"), $filename);
+  }
+
+  ## separator
+  elsif ($f->tag eq "hr") {
+    $menu{$pid} .= menusep();
+  }
+
+  ## folder
+  elsif ($f->tag eq "h3") {
+    $menu{$pid} .= menusubmenu($c, $f->as_text);
+    $menu{$c}    = menustart($c) if ! defined $menu{$c};
+  }
+}
+
+## output
+foreach (keys %menu) {
+  print $menu{$_}, "\n";
+}
+
+
+exit;
+## sub land
+
+sub menusubmenu
+  {
+    my ($id, $text) = @_;
+    return sprintf("+ %%$folder_icon%%\"%s\" Popup %s%s\n", clean($text), $menu_prefix, $id);
+  }
+
+sub menustart
+  {
+    my ($id) = @_;
+    return sprintf("DestroyMenu %s%s\nAddToMenu %s%s\n", $menu_prefix, $id, $menu_prefix, $id);
+  }
+
+sub menuitem
+  {
+    my ($text, $url, $icon) = @_;
+    return sprintf("+ %%%s%%\"%s\" Exec exec %s '%s'\n", ($icon||$bookmark_icon), clean($text||$url), $command, $url);
+  }
+
+sub menusep
+  {
+    return "+ \"\" Nop\n";
+  }
+
+sub clean
+  {
+    my ($text) = @_;
+    if (length($text) > $max_length) {
+      $text = substr($text, 0, $max_length) . "...";
+    }
+    $text =~ s/\*//g;           # $text =~ s/\*/\\\*/g;
+    $text =~ s/\\/\\\\/g;
+    $text =~ s/&/&&/g;
+    $text =~ s/"/\\"/g;
+    $text =~ s/'/\\'/g;
+    $text =~ s/\$/\\\$\$/g;
+    $text =~ s/\n/\\\n/g;
+
+    return $text;
+  }

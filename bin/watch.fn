@@ -1,0 +1,49 @@
+#! /bin/bash
+
+usageversion () {
+        cat >&2 <<END
+Usage: watch [options] <Commands to run>
+Options: 
+  -h           print this message
+  -t<digit>    Number of seconds to sleep
+END
+}
+
+# The defaults
+tts=2
+
+# parse Command line
+while [ $# != 0 ]; do
+    value="`echo x\"$1\" | sed -e 's/^x-.//'`"
+    case "$1" in
+        -h)  usageversion; return 1;;
+	-t*) tts="$value"       ;;
+	-*) echo >&2 "Unknown option $1."
+	    usageversion; return 1 ;;
+	*)  break;;
+    esac
+    shift
+done
+
+
+
+# We need a command to run
+if [ $# = 0 ]; then
+	echo "Need commands to run"
+	return 1;
+fi
+
+tput clear; 
+tput civis; 
+home=$(tput cup 0 0);
+bold=`tput smso`;
+offbold=`tput rmso`;
+while [ 1 -eq 1 ] ; do  
+     echo "${home}$(date +'%x %T')	Run [$@] 	every $tts seconds";
+     eval "$@"; 
+     sleep $tts ;
+done
+tput cvvis 
+
+return 0
+

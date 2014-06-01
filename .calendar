@@ -1,0 +1,81 @@
+opt -m
+#
+# The following rules describe the syntax of date file entries:
+#      
+#     year <year>
+#   
+#     opt <options>
+#   
+#     note <month_spec> <text>
+#     note <month> <text>
+#   
+#     if -A flag (American date formats) specified:
+#       <month_name> <day>{*} {<text>}
+#       <month><sep><day>{<sep><year>}{*} {<text>}
+#   
+#     if -E flag (European date formats) specified:
+#       <day> <month_name>{*} {<text>}
+#       <day><sep><month>{<sep><year>}{*} {<text>}
+#   
+#     <ordinal> <day_name> in <month_spec>{*} {<text>}
+#     <day_name> <prep> <date_spec>
+#   
+#   where
+#   
+#     {x}          means x is optional
+#   
+#     <date_spec> := any of the above date specs (not year, note, or opt)
+#     <month_name> := first 3+ characters of name of month, or "all"
+#     <month_spec> := <month_name>, or "year"
+#     <day_name> := first 3+ characters of name of weekday, "day",
+#                   "weekday", "workday", "holiday", "nonweekday",
+#                   "nonworkday", or "nonholiday"
+#     <ordinal> := ordinal number ("1st", "2nd", etc.), "first" .. "fifth",
+#                   "last", "even", "odd", or "all"
+#     <prep> := "before", "preceding", "after", "following", "on_or_before",
+#                   or "on_or_after"
+#     <sep> := one or more non-numeric, non-space, non-'*' characters
+#     <month>, <day>, <year> are the numeric forms
+#   
+#     <options> := any command-line option except -e, -f, -h, -v, -D, -U
+#        
+1/8       Mike Shardo's birthday
+#1/21      Sabina & Debashis anniversary 
+#1/27      Thugs birthday
+2/8        Riva's Birthday
+2/28       Danny Shardo's  birthday
+3/1        Jack Shardo's birthday
+3/3        Betty Shardo's birthday
+3/4        Angie Shardo's birthday
+3/25       June Shardo's birthday
+3/25       Jeff Shardo's birthday
+3/22       Manoj's birthday
+#4/6       Judith Shardo's birthday
+4/6        My birthday
+#4/14      Sharad's  birthday
+4/30       Partho's  birthday
+5/8        Jim  Shardo's  birthday
+#5/28       Kartik's  birthday
+#7/20       Molly's  birthday
+7/21       Jackie Shardo's  birthday
+7/27       Rob's  birthday
+#8/28       Sushant's  birthday
+#9/11       Sabina's  birthday
+9/11       Jerry Shardo's  birthday
+#9/15       Sandeep Gupta's  birthday
+#9/25       jijji's  birthday
+10/1       Erika Bach's  birthday
+#10/11     Krishnan's  birthday
+10/20     Jason's  birthday
+#10/28    Sabina & Debashis  anniversary 
+11/15     J.C. Shardo's  birthday
+#11/18     Debashis  birthday
+11/19     John Shardo's  birthday
+#12/2     Reema's  birthday
+#12/10     Anu's  birthday
+12/13     As-is's  birthday
+#12/14     Ruchira's  birthday
+#12/18     Ruby's  birthday
+
+
+

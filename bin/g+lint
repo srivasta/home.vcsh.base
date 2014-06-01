@@ -1,0 +1,22 @@
+#!/bin/bash 
+if [ -x /bin/tempfile ]; then
+    gfile=`tempfile -p tcap -m 0600 `;
+else
+    set -e
+    mkdir /tmp/glint$$
+    gfile=/tmp/glint/gfile
+fi
+exec g++ -ansi -pedantic -Wall -W -Wtraditional -Wconversion -Wshadow \
+         -Wpointer-arith -Wcast-qual -Wcast-align -Wunreachable-code \
+         -Wwrite-strings -Waggregate-return -Wpadded \
+         -Wctor-dtor-privacy -Wnon-virtual-dtor -Wreorder -Weffc++ -W \
+         -Wfloat-equal -Wshadow -Wconversion -Wabi -Wchar-subscripts \
+         -fshort-enums -fno-common -Dgets=DONT_USE_GETS -Dlint -Wpacked \
+         -Woverloaded-virtual -Winline -o $gfile -O4 -g -c $*
+
+if test -f $gfile; then
+   rm -f $gfile
+fi
+if [ -d /tmp/glint$$ ]; then
+    rmdir /tmp/glint$$
+fi

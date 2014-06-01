@@ -1,0 +1,56 @@
+#! /bin/bash 
+#                               -*- Mode: Sh -*- 
+# when-webwml --- 
+# Author           : Manoj Srivastava ( srivasta@glaurung.internal.golden-gryphon.com ) 
+# Created On       : Thu Nov 18 14:06:27 2004
+# Created On Node  : glaurung.internal.golden-gryphon.com
+# Last Modified By : Manoj Srivastava
+# Last Modified On : Thu Nov 18 14:13:35 2004
+# Last Machine Used: glaurung.internal.golden-gryphon.com
+# Update Count     : 2
+# Status           : Unknown, Use with caution!
+# HISTORY          : 
+# Description      : 
+# 
+# 
+
+set -e
+
+#<Joy># 24 3,7,11,15,19,23 * * * /org/www.debian.org/cron/often
+
+run="3:24 7:24 11:24 15:24 19:24 23:24"
+now=`date +%s`
+# To find out, issue date -R
+#tz=`date -R|sed 's/.*\(.[0-9]\{4\}\)$/\1/'`	# local timezone
+tz=Europe/Amsterdam   # time zone on www.debian.org
+
+echo -n "Webwml shall run in "
+for when in $run
+do
+    wml=`TZ=$tz date -d "$when:0" +%s`
+    diff=$[ $wml - $now ]
+    if [ $diff -gt 0 ]
+    then
+	hours=$[ $diff / 3600 ]
+	diff=$[ $diff % 3600 ]
+	minutes=$[ $diff / 60 ]
+	diff=$[ $diff % 60 ]
+	date -d "01/01/1970 $hours:$minutes:$diff" +%T
+	exit
+    fi
+done
+
+for when in $run
+do
+    wml=`TZ=$tz date -d "$when:0" +%s`
+    diff=$[ $wml - $now + 86400 ]
+    if [ $diff -gt 0 ]
+    then
+	hours=$[ $diff / 3600 ]
+	diff=$[ $diff % 3600 ]
+	minutes=$[ $diff / 60 ]
+	diff=$[ $diff % 60 ]
+	date -d "01/01/1970 $hours:$minutes:$diff" +%T
+	exit
+    fi
+done

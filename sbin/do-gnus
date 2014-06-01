@@ -1,0 +1,61 @@
+#! /bin/bash
+
+if [ -x /usr/local/bin/emacs ]; then
+	export EMACS=/usr/local/bin/emacs
+fi
+
+set -e
+SRCTOP=/usr/local/share/emacs/site-lisp/gnus-cvs/
+cd $SRCTOP
+
+cvs update
+test -d ./debian && ./debian/rules clean || true
+make clean || true
+test -d ./debian && ./debian/rules build || true
+#./configure
+#./configure --with-url=/usr/local/share/emacs/site-lisp/url-cvs \
+#            --with-w3=/usr/local/share/emacs/site-lisp/w3-cvs
+
+make
+
+
+#SRCTOP=/usr/local/share/emacs/site-lisp/bbdb-cvs/
+#cd $SRCTOP
+
+##cvs update
+#autoconf
+#./configure --with-gnus-dir=/usr/local/share/emacs/site-lisp/gnus-cvs/ \
+#            --with-vm-dir=/usr/share/emacs21/site-lisp/vm/             \
+#	    --with-other-dirs=/usr/share/emacs21/site-lisp/gnuserv/    \
+#	    --enable-vm --enable-gnus 
+#make all
+
+
+#SRCTOP=/usr/local/share/emacs/site-lisp/url-cvs
+#cd $SRCTOP
+
+#cvs update
+#make
+
+
+#SRCTOP=/usr/local/share/emacs/site-lisp/w3-cvs
+#cd $SRCTOP
+
+#cvs update
+#make
+
+
+#SRCTOP=/usr/local/share/emacs/site-lisp/mailcrypt-cvs
+#cd $SRCTOP
+
+#cvs update
+#make
+
+#SRCTOP=/usr/local/share/emacs/site-lisp/tramp-cvs
+#cd $SRCTOP
+
+#cvs update
+#make 
+
+
+

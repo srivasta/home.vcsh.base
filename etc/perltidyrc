@@ -1,0 +1,13 @@
+-pbp   # parameters in the book Perl Best Practices
+-it=2  # Do two iterations by default
+-csc   # adds or updates closing side comments
+-cscb  # balance delimiters in closing side comments
+-sbc   # allow static block comments
+-fs    # allow comments to bypass perltidy changes
+-nce   # no cuddled else
+-bar   # force the opening brace to always be on the right
+-otr   # do not place a break between a comma and an opening token
+-sot   # "stack" opening tokens when possible
+-i=2   # indentation is two spaces, not 4
+-ci=2  # Continued indentation is two spaces, not 4
+

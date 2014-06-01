@@ -1,0 +1,113 @@
+#! /usr/bin/perl 
+'di';
+'ig00';
+#
+# $Header: zap,v 1.1 90/08/12 00:24:33 lwall Locked $
+#
+# $Log:	zap,v $
+# Revision 1.1  90/08/12  00:24:33  lwall
+# Initial revision
+# 
+
+$SYSV = -f '/unix';
+
+$progname = $0;
+$pscmd = $SYSV ? "ps -ef" : "ps auxww";
+
+open(TTYIN, "</dev/tty") || die "can't read /dev/tty: $!";
+open(TTYOUT, ">/dev/tty") || die "can't write /dev/tty: $!";
+select(TTYOUT);
+$| = 1;
+select(STDOUT);
+$SIG{'INT'} = 'cleanup';
+
+$sig = 'TERM';
+if ($#ARGV >= $[ && $ARGV[0] =~ /^-/) {
+    if ($ARGV[0] =~ /-(\w+)$/) {
+	$sig = $1;
+    } else {
+	print STDERR "$0: illegal argument $ARGV[0] ignored\n";
+    }
+    shift;
+}
+
+if ($SYSV) {
+    system "stty", '-icanon',
+    system "stty", 'eol', '^A';
+}
+else {
+    system "stty cbreak </dev/tty >/dev/tty 2>&1";
+}
+
+open(PS, "$pscmd|") || die "can't run $pscmd: $!";
+$title = <PS>;
+print TTYOUT $title;
+eval <<'EOF';
+while ($cand = <PS>) {
+    chop($cand);
+    ($user, $pid) = split(' ', $cand);
+    next if $pid == $$;
+    $found = ($#ARGV < $[) ? 1: 0;
+    foreach $pat (@ARGV) {
+	$found = 1 if $cand =~ $pat;
+    }
+    next if (!$found);
+    print TTYOUT "$cand? ";
+    read(TTYIN, $ans, 1);
+#    $ans = getc(TTYIN);
+    print TTYOUT "\n" if ($ans ne "\n");
+    if ($ans =~ /^[yY]/) { kill $sig, $pid; }
+    if ($ans =~ /^[qQ]/) { last; }
+}
+EOF
+&cleanup;
+
+sub cleanup {
+    if ($SYSV) {
+	system "stty", 'icanon';
+	system "stty", 'eol', '^@';
+    }
+    else {
+	system "stty -cbreak </dev/tty >/dev/tty 2>&1";
+    }
+    print "\n";
+    exit;
+}
+##############################################################################
+
+	# These next few lines are legal in both Perl and nroff.
+
+.00;			# finish .ig
+ 
+'di			\" finish diversion--previous line must be blank
+.nr nl 0-1		\" fake up transition to first page again
+.nr % 0			\" start at page 1
+'; __END__ ############# From here on it's a standard manual page ############
+.TH ZAP 1 "July 30, 1990"
+.AT 3
+.SH NAME
+zap \- zap processes matching pattern
+.SH SYNOPSIS
+.B zap [-signal] pattern
+.SH DESCRIPTION
+.I Zap
+runs ps for you and selects those processes which match the pattern you
+supply.
+It then asks you whether you want to kill each of the selected processes.
+Type "y" or "Y" to kill the process, anything else to leave it alone.
+Type "q" or "Q" to quit.
+.PP
+You may optionally send a different signal by specifying it with a
+command line switch.
+.SH ENVIRONMENT
+No environment variables used.
+.SH FILES
+No files used.
+.SH AUTHOR
+Steve Jenkins
+.SH "SEE ALSO"
+kill(1);
+.SH DIAGNOSTICS
+Complains if it can't open /dev/tty or run ps.
+.SH BUGS
+.ex

@@ -1,0 +1,517 @@
+#!/usr/bin/perl
+
+# Written by Seth Golub <seth@cs.wustl.edu> 
+#   http://www.cs.wustl.edu/~seth/projects/bbdb/
+
+# Written 1995 by Seth Golub <seth@cs.wustl.edu> 
+#            http://www.cs.wustl.edu/~seth/
+# 
+# Based on code written 1993 by Cengiz Alaettinoglu <ca@cs.umd.edu>
+
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 1, or (at your option)
+# any later version.
+
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+
+# A copy of the GNU General Public License can be obtained from this
+# program's author (send electronic mail to the above address) or from
+# Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+
+require "getopts.pl";
+
+($version) = '$Revision: 1.3 $ ' =~ /(\d+\.\d+)/;
+
+# Call these anything you want.
+$name_key    = "name";
+$lname_key   = "lname";
+$alias_key   = "alias";
+$org_key     = "org";
+$phone_key   = "phone";
+$address_key = "address";
+$email_key   = "email";
+
+# This one must be called "notes"
+$notes_key   = "notes";
+
+
+#############################
+# Deal with options
+#
+&Getopts("hHvFf:Pp:r:nNaR") || &Usage();
+
+&Usage if $opt_h;
+&Help if $opt_H;
+
+if($opt_v) {
+    print "$version\n";
+    exit;
+}
+
+$bbdb_file    = $opt_f || $ENV{BBDB} || "$ENV{HOME}/etc/bbdb"; # database file
+$show_all_emails   = $opt_a;         # show all email adresses
+$just_print_fields = $opt_F;    # Print all field names, then exit
+
+$required          = $opt_r || "";   # Fields to require
+
+$pfields           = $opt_p || $email_key; # Fields to show
+
+# I made these separate in case you wanted to just set one.
+$req_val_implies_record     = $opt_R;
+$rev_req_val_implies_record = $opt_R;
+
+# Prepend name
+if(($opt_n || $opt_N) && !$print_all)
+{
+    # Make specified print fields required
+    $required .= (($required eq "") ? "" : " ") . $pfields;
+
+    if($opt_n)
+    {
+        $pfields  = "$name_key $lname_key $pfields" ; # prepend name 
+    } else {
+        $pfields .= " $name_key $lname_key";          # append name
+    }
+}
+
+@print_fields = split(/ +/, $pfields);
+@required_fields = split(/ +/, $required);
+
+for($i=0; $i <= $#required_fields; $i++)
+{
+    ($required_fields[$i], $required_values[$i]) =
+        $required_fields[$i] =~ /^([^:]+):?(.*)$/
+            if $required_fields[$i] =~ /:/;
+
+    # Only records *without* this field
+    if(substr($required_fields[$i], 0, 1) eq "!")
+    {
+        $required_fields[$i] = substr($required_fields[$i], 1);
+        $reverse_requirement[$i] = 1;
+    }
+
+    # Records *not* matching this field value
+    if(defined($required_values[$i])
+       && substr($required_values[$i], 0, 1) eq "!")
+    {
+        $required_values[$i] = substr($required_values[$i], 1);
+        $reverse_requirement_val[$i] = 1;
+    }
+}
+
+@users = @ARGV;
+
+#
+#############################
+#
+# Open bbdb file or STDIN
+if($bbdb_file eq "-")
+{
+    $BBDB = STDIN;
+} else {
+    open(BBDB, $bbdb_file) || die "$0: Can't open database: $bbdb_file\n";
+    $BBDB = BBDB;
+}
+
+# Grab user field list
+while(<$BBDB>)
+{
+    last if !/^;;; /;
+    last if /^;;; user-fields: \(.*\)/;
+}
+($user_fields) = /^;;; user-fields: \((.*)\)/;
+
+if($just_print_fields)
+{
+    &print_all_fields();
+    exit;
+}
+
+# Make some constants so we can finds things in the records
+$std_fields{$name_key}    = 1;
+$std_fields{$lname_key}   = 2;
+$std_fields{$alias_key}   = 3;
+$std_fields{$org_key}     = 4;
+$std_fields{$phone_key}   = 5;
+$std_fields{$address_key} = 6;
+$std_fields{$email_key}   = 7;
+$std_fields{$notes_key}   = 8;
+
+&validate_fields(@print_fields);
+&validate_fields(@required_fields);
+
+######################################
+
+@save = <$BBDB>;                # Read in the rest of the database
+
+@save = grep(!/^;/, @save);     # Filter out the comments
+
+# Make some regexps based on the query strings
+$users = "(" . join(")|(",@users) . ")";
+$users2 = $users; $users2 =~ s/ /\|/g;
+$users =~ s/ /\[\^\\\"\]\+/g;   # ";
+
+@save = grep(/$users2/i, @save); # Filter out obviously unneeded records
+@save = grep(chop && chop && s/^\[/ /o, @save); # Do something mysterious
+
+# Try for an exact match
+@bbdb = grep(&choose_exact($users), @save);
+if ($#bbdb < 0)
+{
+    # If nothing comes up, then try for a partial match
+    @bbdb = grep(&choose_partial($users), @save);
+}
+
+# Print out the records we've still got.
+&bbdb_exec();
+
+exit 0;
+
+sub bbdb_exec 
+{
+    for ($i=0; $i <= $#bbdb; $i++) {
+        @record = &get_fields($bbdb[$i]);
+        ($name, $lname, $alias, $org, $phone, $address, $email, $notes, $nil)
+            = @record;
+        if($#required_fields != -1)
+        {
+            $has_all_required_fields = 1;
+            for($j=0; $j <= $#required_fields; $j++)
+            {
+                $fieldval = &get_field($required_fields[$j], @record);
+                
+                if ($required_values[$j]   # Is it a value req?
+                    ? ($reverse_requirement_val[$j]
+                       ? (($fieldval =~ /$required_values[$j]/i)
+                          || ($rev_req_val_implies_record && !$fieldval))
+                       : (($fieldval !~ /$required_values[$j]/i)
+                          || ($req_val_implies_record && !$fieldval)))
+                    : ($reverse_requirement[$i] ? $fieldval : !$fieldval))
+                {
+                    $has_all_required_fields = 0;
+                    last;
+                }                
+            }
+            next if !$has_all_required_fields;
+        }
+
+        for($j=0; $j <= $#print_fields; $j++)
+        {
+            $index = $std_fields{$print_fields[$j]};
+            if (!$index)
+            {
+                ($fieldval) = grep(s/$print_fields[$j] \. "(.*)"/$1/, 
+                                   &get_fields($notes));
+            } else {
+                $fieldval = $record[$index-1];
+                if($index == 7)     # email
+                {
+                    if ($show_all_emails == 0) {
+                        ($email) = &get_fields($email);
+                    } else {
+                        $email =~ s/\"//g; # ";
+                    }
+                    $fieldval = $email;
+                } elsif ($index == 8) # notes
+                {
+                    $fieldval = &get_field($notes_key, @record);
+                } elsif ($index == 5) # phone
+                {
+                    $fieldval = &format_phones($fieldval);
+                } elsif ($index == 6) # address
+                {
+                    $fieldval = &format_addresses($fieldval);
+                }
+            }
+            if (!$fieldval || ($fieldval eq "nil"))
+            {
+                $output .= "\t";
+                next;
+            }
+            $this_line_has_output = 1;
+            $output .= "$fieldval\t";
+        }
+        print "$output\n" if $this_line_has_output;
+        $output = "";
+        $this_line_has_output = 0;
+    }
+}
+
+sub print_all_fields
+{
+    @user_fields = sort(split(/ /, $user_fields)); # alphabetize
+    printf("Standard fields:  %s %s %s %s %s %s %s %s\n",
+           $name_key, $lname_key, $alias_key, $org_key, $phone_key,
+           $address_key, $email_key, $notes_key);
+    print "User fields: @user_fields\n";
+}
+
+sub split_list
+{
+    local(@items);
+    @items = split(/\] \[/, $_[0]);
+    $items[0] =~ s/^\[//;
+    $items[$#items] =~ s/\]$//;
+    @items;
+}
+
+sub format_phones
+{
+    local(@items, $output, $j);
+    local( $area, $exchange, $num, $extension, $title, $number );
+    @items = &split_list(@_);
+    $output = "";
+    for($j=0; $j <= $#items; $j++) 
+    {
+        next if ($items[$j] eq "nil");
+        ($title, $area, $exchange, $num, $extension) 
+            = $items[$j] =~ /^"([^\"]*)" (\d+) (\d+) (\d+) (\d+)$/;
+        if($area)
+        {
+            $number = sprintf("(%03d) %03d-%04d", $area, $exchange, $num);
+            $number .= " x$extension" if $extension;
+        } else {
+            ($title, $number) = $items[$j] =~ /^"([^\"]*)" "([^\"]*)"$/;
+        }
+        $output .= "$title: $number\t";
+    }
+    chop $output;
+    $output;
+}
+
+sub format_addresses
+{
+    local(@items, $output);
+    @items = &split_list(@_);
+    $output = "";
+    for($j=0; $j <= $#items; $j++) 
+    {
+        next if ($items[$j] eq "nil");
+        ($title, $a1, $a2, $a3, $city, $state, $zip1, $zip2) 
+            = $items[$j] =~ /^"([^\"]*)" "([^\"]*)" "([^\"]*)" "([^\"]*)" "([^\"]*)" "([^\"]*)" \(?(\d+) ?(\d+)?\)?$/;
+        $output .= "\n  $title:\n";
+        $output .= "$a1\n" if $a1;
+        $output .= "$a2\n" if $a2;
+        $output .= "$a3\n" if $a3;
+        $output .= "$city" if $city;
+        $output .= ", " if ($city && $state);
+        $output .= "$state" if $state;
+        $output .= sprintf("  %05d", $zip1) if $zip1;
+        $output .= sprintf("-%04d", $zip2) if $zip2;
+        $output .= "\n" if ($city || $state || $zip1 || $zip2);
+    }
+    $output;
+}
+
+sub choose_exact 
+{
+     local($name, $lname, $alias, $org, $phone, 
+           $address, $email, $notes, $nil) = &get_fields($_);
+     return (join(" ", $name, $lname, $alias, $email) =~ /\b($_[0])\b/i) && 1;
+}
+
+sub choose_partial 
+{
+     local($name, $lname, $alias, $org, $phone, 
+           $address, $email, $notes, $nil) = &get_fields($_);
+     return (join(" ", $name, $lname, $alias, $email, $notes) =~ /$_[0]/i) && 1;
+}
+
+sub get_field
+{
+    local($fieldname, @record) = @_;
+    local($fieldval);
+    if ($fieldname eq $notes_key)
+    {
+        if($record[7] =~ /^\(\S+ \. ".*"\)$/)
+        {
+            ($fieldval) = grep(s/$fieldname \. "(.*)"/$1/, 
+                               &get_fields($record[7]));
+        } else {
+            $fieldval = $record[7];
+        }
+    } elsif($std_fields{$fieldname})
+    {
+        $fieldval = @record[$std_fields{$fieldname}-1];
+    } else {
+        ($fieldval) = grep(s/$fieldname \. "(.*)"/$1/, 
+                           &get_fields($record[7]));
+    }
+    ($fieldval eq "nil") ? "" : $fieldval;
+}
+
+sub get_fields 
+{
+    local ($i) = 0;
+    local (@field);    
+    local ($j) = 0;
+
+
+    $j = 0;
+    while ($j < length($_[0])) {
+        if (substr($_[0], $j, 1) eq '"') { # ;"
+            ($j, $field[$i++]) = &match_string($_[0], $j);
+        }
+        elsif (substr($_[0], $j, 1) eq '(') {
+            ($j, $field[$i++]) = &match_parent($_[0], $j);
+        }
+        elsif (substr($_[0], $j, 1) ne ' ') {
+            ($j, $field[$i++]) = &match_word($_[0], $j);
+        }
+        else {
+            $j ++;
+        }
+    }
+    return @field;
+}
+
+sub match_string 
+{
+    local ($i) = $_[1];
+
+    $i++;
+    for (; $i < length($_[0]); $i++) {
+        if (substr($_[0], $i, 1) eq '"') { # ;"
+            $i++;
+            return ($i, substr($_[0], $_[1]+1, $i - $_[1] - 2));
+        }
+    }
+
+    return ($i, substr($_[0], $_[1]+1));
+}
+
+sub match_word 
+{
+    local ($i) = $_[1];
+
+    for (; $i < length($_[0]); $i++) {
+        if (substr($_[0], $i, 1) eq ' ') {
+            return ($i, substr($_[0], $_[1], $i - $_[1]));
+        }
+    }
+
+    return ($i, substr($_[0], $_[1]));
+}
+
+sub match_parent 
+{
+    local ($i) = $_[1];
+    local ($skip) ;
+    $stack = 1;
+    $i++;
+
+    for (; $i < length($_[0]); $i++) {
+        if (substr($_[0], $i, 1) eq '"') { # ;"
+            ($i, $skip) = &match_string($_[0], $i);
+            $i --;
+        }
+        elsif (index("([", substr($_[0], $i, 1)) >= 0) {
+            $stack++;
+        }
+        elsif (index("])", substr($_[0], $i, 1)) >= 0) {
+            $stack--;
+            if ($stack == 0) {
+                $i++;
+                return ($i, substr($_[0], $_[1]+1, $i - $_[1] - 2));
+            }
+        }
+    }
+
+    return ($i, substr($_[0], $_[1]+1));
+}
+
+sub validate_fields
+{
+    local(@fields) = @_;
+    for($i=0; $i <= $#fields; $i++)
+    {
+        if(!$std_fields{$fields[$i]}
+           && ("$user_fields" !~ /\b$fields[$i]\b/))
+        {
+            print STDERR "Unknown field: $fields[$i]\n";
+            &print_all_fields();
+            exit 1;
+        }
+    }
+}
+
+sub print_usage
+{
+    $0 =~ s#.*/##;
+    print STDERR <<EOUsage;
+
+Usage: $0 [options] [user] [user] ...
+
+where options can be:
+     -p <fields>  Space separated list of fields to print
+     -r <fields>  Space separated list of fields & values to require
+     -n           Prepend full name     \\ (Shortcuts for adding the name
+     -N           Append full name      /  without printing everyone)
+     -f <file>    BBDB file (defaults to \$BBDB, or to ~/.bbdb)
+     -R           Field value requirements also require field
+     -a           Print all email addresses, instead of just the first
+     -F           List all field names instead of looking something up
+     -h           Print just the usage message, then exit
+     -H           Print the usage & help messages, then exit
+     -v           Print version number, then exit
+
+EOUsage
+}
+sub Usage
+{
+    &print_usage;
+    exit !$opt_h;
+}
+
+sub Help
+{
+    &print_usage;
+    print <<EOHelp;
+
+For each matching record, $0 will print the specified fields 
+separated by tabs.
+
+A record matches if the name matches one specified (or if none were) 
+and it has all the required fields with the required values.
+
+The print fields list should just be a space-separated list of field 
+names.  
+Example:
+
+   "$name_key $lname_key $email_key"
+
+
+The required fields list can be the same, but can also list field
+value requirements in the form of a regular expression.
+Example: 
+
+   "$email_key $notes_key:geek $notes_key"
+
+This would match any record that had an email field and had a notes
+field that had "geek" in it.  If you used the -R option, you wouldn't
+need to require that last requirement.  The regular expression can
+contain ':'s, but not spaces and is case insensitive.  If the pattern
+begins with "!", the requirement will be reversed and only records not
+matching the pattern will be listed.  If the field name starts with
+"!", only records which do not contain that field will be listed. 
+Example:
+
+   "$notes_key:!geek !$email_key"
+
+This would match any record that didn't have a notes field with "geek"
+in it and didn't have an email field.  With the -R option, records
+without a notes field would also match.
+
+Phone numbers are also separated by tabs, even though they're
+technically one field.  Addresses don't fit well into the
+tab-separated scheme, so those are just printed in more human-readable
+formats.
+
+EOHelp
+    exit;
+}
+

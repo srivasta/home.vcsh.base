@@ -1,0 +1,31 @@
+#!/bin/bash 
+if [ -x /bin/tempfile ]; then
+    gfile=`tempfile -p tcap -m 0600 `.o;
+else
+    set -e
+    mkdir /tmp/glint$$
+    gfile=/tmp/glint$$/gfile.o
+fi
+# -std=gnu99  
+exec gcc -std=c99 -pedantic -Wextra  -Wall -Wformat=2 -Wno-format-extra-args \
+         -Winit-self  -Wmissing-include-dirs -Wswitch-default -Wswitch-enum  \
+         -Wunused -Wstrict-overflow=5 -Wfloat-equal -Wundef -Wno-endif-labels\
+         -Wshadow -Wunsafe-loop-optimizations  -Wpointer-arith               \
+         -Wbad-function-cast -Wc++-compat -Wcast-qual -Wcast-align           \
+         -Wwrite-strings -Wconversion -Wlogical-op -Waggregate-return        \
+         -Wpacked -Wpadded -Wunreachable-code -Winline -Wvariadic-macros     \
+         -Wvla -Wvolatile-register-var  -Wstack-protector                    \
+         -Woverlength-strings -Wmissing-declarations -Wmissing-parameter-type\
+         -Wmissing-prototypes  -Wnested-externs -Wold-style-declaration      \
+         -Wold-style-definition -Wstrict-prototypes -Wpointer-sign           \
+         -fshort-enums -fno-common -fstack-protector                         \
+         -D_FORTIFY_SOURCE=2 -Dgets=DONT_USE_GETS -Dlint -O2 -g              \
+          -o $gfile -c $*
+
+
+if test -f $gfile; then
+   rm -f $gfile
+fi
+if [ -d /tmp/glint$$ ]; then
+    rmdir /tmp/glint$$
+fi

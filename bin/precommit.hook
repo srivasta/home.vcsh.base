@@ -1,0 +1,39 @@
+#!/bin/bash
+
+LIST=$( git status | grep -e '\#.*\(modified\|added\|new file\)' | grep -v '\#.*\(features\|contribs\|devel\)' )
+files=$(git diff-index --name-only HEAD | grep -e '\.js$')
+
+DIR=$(git rev-parse --show-toplevel)
+EMAIL=$(git config user.email)
+TMPFILE=$(mktemp)
+
+# The current directory is the top level of the working tree.
+#    GIT_DIR is set to ‘.git’
+#    GIT_INDEX_FILE is set to ‘.git/index’
+
+
+if git-rev-parse --verify HEAD >/dev/null 2>&1; then
+    against=HEAD
+else
+    against=4b825dc642cb6eb9a060e54bf8d69288fbee4904
+fi
+
+git stash -q --keep-index
+
+# Check the files being committed.
+git diff --cached --name-status  $against -- | cut -c3- | while read st file; do
+                                      # Skip deleted files.
+                                      if [ "$st" == 'D' ]; then continue; fi
+                                      #echo "You are working on file: $file";
+                                  done
+
+git diff --cached --name-status --diff-filter=ACMR | while read STATUS FILE; do
+if [[ "$FILE" =~ ^.+(php|inc)$ ]]; then
+    php -l "$FILE" 1> /dev/null
+    if [ $? -ne 0 ]; then
+        echo "Aborting commit due to files with syntax errors" >&2
+        exit 1
+    fi
+fi
+done
+git stash pop -q

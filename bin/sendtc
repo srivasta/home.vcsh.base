@@ -1,0 +1,32 @@
+#! /bin/sh
+
+files=${1+"$@"}
+
+if [ "X$files" = "X" ]; then
+  echo We need a time card postscript file to send.
+  echo There was none supplied on the command line
+  exit 1
+fi
+
+
+for file in $files; do
+  if [ ! -f $file ]; then 
+    echo We need a real time card postscript file to send.
+    echo $file does not exist.
+    exit 1
+  fi
+done
+
+NAME="Bernice Thomas"
+FAX="16038846249"
+
+COMMENT="Time Cards"
+TITLE="Time card(s) for Manoj Srivastava"
+
+SENDER="Manoj Srivastava <srivasta@acm.org>"
+COMPANY="COMPAQ"
+LOCATION="ZK3, Nashua"
+
+
+sendfax -d "$NAME@$FAX" -c "$COMMENT" -f "$SENDER" -r "$TITLE" \
+        -x "$COMPANY"  -y "$LOCATION" -v -v $files

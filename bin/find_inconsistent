@@ -1,0 +1,35 @@
+#!/bin/bash
+
+cat /var/lib/dpkg/status | awk '
+/^Package:/ {
+	p=$2
+}
+/^Status:/ { 
+	st[p]=$2
+}
+/^Source:/ {
+        if ($2 in cnt)  {
+		cnt[$2]++;
+		pkgs[$2] = pkgs[$2] " " p
+	} else {
+		cnt[$2] = 1
+		pkgs[$2] = p
+	}
+}
+/^Version:/ {
+	ver[p]=$2
+}
+END {
+	for (s in cnt) {
+		n = split(pkgs[s], l)
+		for (i = 2; i <= n && ver[l[i]]==ver[l[1]]; i++);
+		if (i > n)
+			continue
+		
+		print("Source: " s)
+		for (i = 1; i <= n; i++)
+			print("Binary " l[i] ": " st[l[i]] "ed version " ver[l[i]])
+		print
+	}
+}
+'

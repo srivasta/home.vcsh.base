@@ -1,0 +1,9 @@
+#! /bin/sh
+
+# The key is the “” for alternate-editor. emacsclient starts the
+# server for you if and only if it is not already running.
+if [ -z "$DISPLAY" ]; then
+    emacsclient --alternate-editor="" -t "$@"
+else
+    emacsclient --alternate-editor="" -c -F "((height . 50) (width . 120) (top - 0) (left . 0))" "$@"
+fi

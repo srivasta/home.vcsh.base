@@ -1,0 +1,71 @@
+#!/usr/bin/perl -w
+
+#
+# Usage: dpkg-provides [-q|--quiet] <package>...
+#
+# Finds all installed packages which provide the (possibly virtual)
+# packages <package>....  If -q/--quiet is not specified, print them,
+# one per line, to standard output in the format
+# "<package>: <providers>".  Exits with nonzero status if any of the
+# specified packages are not provided by any installed packages.
+#
+# Copyright (C) 2001  Matt Zimmerman <mdz@debian.org>
+#
+#      This program is free software; you can redistribute it and/or modify
+#      it under the terms of the GNU General Public License as published by
+#      the Free Software Foundation; either version 2 of the License, or
+#      (at your option) any later version.
+#
+#      This program is distributed in the hope that it will be useful,
+#      but WITHOUT ANY WARRANTY; without even the implied warranty of
+#      MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#      GNU General Public License for more details.
+#
+#      You should have received a copy of the GNU General Public
+#      License along with this program; if not, write to the Free
+#      Software Foundation, Inc., 59 Temple Place, Suite 330, Boston,
+#      MA 02111-1307 USA
+#
+
+use strict;
+use Getopt::Long;
+
+my $quiet;
+GetOptions('quiet|q' => \$quiet) || die;
+
+my @packages = @ARGV;
+
+my $status = "/var/lib/dpkg/status";
+
+my %providers;
+
+$/ = '';
+open(STATUS, "<$status") || die "$status: $!\n";
+while (<STATUS>) {
+  next unless /^Status: .*ok installed$/m;
+
+  foreach my $pkg (@packages) {
+    if (/^Package: $pkg$/m) {
+      push(@{$providers{$pkg}}, $pkg);
+    }
+    elsif (/^Provides: .*\b$pkg\b/m) {
+      /^Package: (.*)$/m && push(@{$providers{$pkg}}, $1);
+    }
+  }
+}
+
+close(STATUS);
+
+my $ret = 0;
+foreach my $pkg (@packages) {
+  if (defined $providers{$pkg}) {
+    print "$pkg: @{$providers{$pkg}}\n"
+	unless $quiet;
+  } else {
+    $ret = 1;
+    print "$pkg: \n"
+	unless $quiet;
+  }
+}
+
+exit $ret;

@@ -1,0 +1,6 @@
+#!/bin/sh 
+if [ `hostname` == "glaurung" ]; then
+    xauth extract - glaurung:0 | ssh tiamat /usr/bin/X11/xauth merge -
+    ssh tiamat 'DISPLAY=glaurung:0 dctrl -cw -iconic & '
+fi
+

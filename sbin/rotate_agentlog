@@ -1,0 +1,24 @@
+#!/bin/bash
+#                               -*- Mode: Sh -*- 
+# rotate_agentlog --- 
+# Author           : Manoj Srivastava ( srivasta@glaurung.green-gryphon.com ) 
+# Created On       : Thu Sep  5 16:59:10 2002
+# Created On Node  : glaurung.green-gryphon.com
+# Last Modified By : Manoj Srivastava
+# Last Modified On : Tue Sep 15 08:24:09 2009
+# Last Machine Used: anzu.internal.golden-gryphon.com
+# Update Count     : 4
+# Status           : Unknown, Use with caution!
+# HISTORY          : 
+# Description      : 
+# 
+# 
+
+LOGDIR=$HOME/var/log
+YEAR=$(date -d yesterday +%Y)
+MONTH=$(date -d yesterday +%m)
+if [ -f $LOGDIR/$YEAR.$MONTH.agentlog ]; then
+    mv -f $LOGDIR/$YEAR.$MONTH.agentlog $LOGDIR/$YEAR.$MONTH.agentlog.old
+fi
+
+mv -f $LOGDIR/agentlog $LOGDIR/$YEAR.$MONTH.agentlog

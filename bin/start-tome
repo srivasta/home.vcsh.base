@@ -1,0 +1,121 @@
+#!/bin/bash
+
+# Describe attempt
+echo "Launching Tome..."
+sleep 2
+
+# Main window
+export ANGBAND_X11_FONT_0=9X15
+export ANGBAND_X11_AT_X_0=0
+export ANGBAND_X11_AT_Y_0=0
+export ANGBAND_X11_COLS_0=100
+export ANGBAND_X11_ROWS_0=30
+
+export TOME_X11_FONT_0=9X15
+export TOME_X_POS_0=0
+export TOME_Y_POS_0=0
+export TOME_NUM_COLS_0=100
+export TOME_NUM_ROWS_0=30
+
+# Mirror window
+export ANGBAND_X11_FONT_1=5x8
+export ANGBAND_X11_AT_X_1=775
+export ANGBAND_X11_AT_Y_1=0
+export ANGBAND_X11_COLS_1=55
+export ANGBAND_X11_ROWS_1=20
+
+export TOME_X11_FONT_1=5x8
+export TOME_X_POS_1=775
+export TOME_Y_POS_1=0
+export TOME_NUM_COLS_1=55
+export TOME_NUM_ROWS_1=20
+
+# Monster recall window
+export ANGBAND_X11_FONT_2=6x9
+export ANGBAND_X11_AT_X_2=730
+export ANGBAND_X11_AT_Y_2=430
+export ANGBAND_X11_COLS_2=73
+export ANGBAND_X11_ROWS_2=14
+
+export TOME_X11_FONT_2=6x9
+export TOME_X_POS_2=730
+export TOME_Y_POS_2=430
+export TOME_NUM_COLS_2=73
+export TOME_NUM_ROWS_2=14
+
+# Equipment window
+export ANGBAND_X11_FONT_3=6x9
+export ANGBAND_X11_AT_X_3=0
+export ANGBAND_X11_AT_Y_3=665
+export ANGBAND_X11_COLS_3=73
+export ANGBAND_X11_ROWS_3=23
+
+
+export TOME_X11_FONT_3=6x9
+export TOME_X_POS_3=0
+export TOME_Y_POS_3=665
+export TOME_NUM_COLS_3=73
+export TOME_NUM_ROWS_3=23
+
+# Inventory window
+export ANGBAND_X11_FONT_4=6x9
+export ANGBAND_X11_AT_X_4=0
+export ANGBAND_X11_AT_Y_4=415
+export ANGBAND_X11_COLS_4=80
+export ANGBAND_X11_ROWS_4=14
+
+export TOME_X11_FONT_4=6x9
+export TOME_X_POS_4=0
+export TOME_Y_POS_4=415
+export TOME_NUM_COLS_4=80
+export TOME_NUM_ROWS_4=14
+
+# Object recall window
+export ANGBAND_X11_FONT_5=6x9
+export ANGBAND_X11_AT_X_5=730
+export ANGBAND_X11_AT_Y_5=670
+export ANGBAND_X11_COLS_5=73
+export ANGBAND_X11_ROWS_5=11
+
+export TOME_X11_FONT_5=6x9
+export TOME_X_POS_5=730
+export TOME_Y_POS_5=670
+export TOME_NUM_COLS_5=84
+export TOME_NUM_ROWS_5=22
+
+export ANGBAND_X11_FONT_6=6x9
+export ANGBAND_X11_AT_X_5=666
+export ANGBAND_X11_AT_Y_5=875
+export ANGBAND_X11_COLS_6=80
+export ANGBAND_X11_ROWS_6=9
+
+export TOME_X11_FONT_6=6x9
+export TOME_X_POS_6=666
+export TOME_Y_POS_6=875
+export TOME_NUM_COLS_6=80
+export TOME_NUM_ROWS_6=9
+
+export ANGBAND_X11_FONT_7=6x9
+export TOME_X11_FONT_7=6x9
+
+
+
+# Gamma correction
+export ANGBAND_X11_GAMMA=142
+
+# Window position for SDL interface (defunct)
+export TOME_SCREEN_WIDTH=1280
+export TOME_SCREEN_HEIGHT=1024
+export TOME_SCREEN_BPP=24
+export TOME_FONT_SIZE=10
+
+# Launch Angband
+# Adam bolt
+#tome -mxaw -- -s -n7 &
+#$(basename $0) -g -- -b -n4
+#angband -mxaw -- -n7 &
+#angband -mx11 -- -n7 &
+#angband -mxpj -- -n7 &
+tome -mx11  -- -s -n9 &
+#tome -msdl -- -s -n9 &
+

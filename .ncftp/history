@@ -1,0 +1,98 @@
+ls -lastr
+get patch-2.6.0-test6.bz2
+cd v2.6
+dir
+get patch-2.6.0-test7.bz2
+cd v2.6
+dir
+cd v.26
+cd v2.6
+dir
+get patch-2.6.0-test8.bz2
+cd v2.6
+ls -lastr
+cd v2.4
+dir
+ls -lastr
+pdir
+get patch-2.4.23.bz2
+cd ../v2.6
+pdir
+get patch-2.6.0-test11.bz2
+cd v2.6
+get linux-2.6.0.tar.bz2
+dir
+cd bind9
+dir
+cd v2.6
+dir
+cd debian/
+dir
+cd pool/main/
+dir
+cd k/
+dir
+cd kernel-image-2.6.9-i386/
+dir
+get kernel-image-2.6.9-1-k7_2.6.9-3_i386.deb 
+cd debian/pool/main/k/kernel-image-2.6.9-i386/
+pwd
+dir
+get kernel-image-2.6.9-1-386_2.6.9-3_i386.deb
+cd v2.6
+dir
+pdir
+ls -asCF
+dir linux*
+get linux-2.6.11.tar.bz2.sign linux-2.6.11.tar.bz2
+bookmark vmware
+dir
+ls -lastr
+get  vmware-any-any-update89.tar.gz
+less readme.txt 
+cd v2.6
+ls
+get linux-2.6.12.tar.bz2.sign linux-2.6.12.tar.bz2
+cd v2.6
+ls -lastr
+dir
+pdir
+cd v2.6
+pdir
+get patch-2.6.12.1.bz2
+cd pub/angband/Source
+pwd
+dir
+cd v2.6
+dir
+pdir
+get patch-2.6.12.3.bz2
+cd v2.6
+ls -lstr
+get linux-2.6.13.tar.bz2.sign linux-2.6.13.tar.bz2
+ls
+cd version-2
+lt
+ls
+lcd /usr/local/src/arch/packages-debian/fvwm
+lcd /usr/local/src/arch/packages--debian/fvwm/
+ls
+get fvwm-2.5.21.tar.gz
+ls
+cd Datasets/
+ls
+cd Tangram/
+l
+ls
+ls -als
+cd CMU-Tangram4/
+ls -asCF
+cd ..
+ls -asCFR
+ls -aslR
+ls -asCF
+dir
+cd checklibs...
+dir
+get checklibs...
+dir

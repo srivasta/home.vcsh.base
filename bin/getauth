@@ -1,0 +1,3 @@
+#  xauth extract - $DISPLAY | ssh tiamat /usr/bin/X11/xauth merge - 
+#  xon otherhost
+xauth -f ~srivasta/.Xauthority -i  extract - $DISPLAY  | xauth merge -

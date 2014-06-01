@@ -1,0 +1,73 @@
+#!/bin/sh
+#                               -*- Mode: Sh -*- 
+# scan_packages --- 
+# Author           : Manoj Srivastava ( srivasta@glaurung.green-gryphon.com ) 
+# Created On       : Wed Dec 10 07:39:09 2003
+# Created On Node  : glaurung.green-gryphon.com
+# Last Modified By : Manoj Srivastava
+# Last Modified On : Wed Dec 10 08:25:57 2003
+# Last Machine Used: glaurung.green-gryphon.com
+# Update Count     : 15
+# Status           : Unknown, Use with caution!
+# HISTORY          : 
+# Description      : 
+# 
+# 
+
+set -e
+# Routine to clean up old versions of packages
+only_one () {
+    dir=$1;
+    pkg=$2
+    ext=$3
+
+    set X $(ls -a $dir/${pkg}_*.${ext} | sort -u)
+    shift
+    for deb
+      do
+      if [ $# -gt 2 ]; then 	# keep 2 copies
+	  echo rm -f $deb; 
+	  rm -f $deb; 
+	  shift; 
+      fi; 
+    done
+}
+
+
+
+WORKDIR=$HOME/public_html
+LOGFILE=$HOME/var/log/scanlog
+TMPPKG=$HOME/public_html/packages/Packages
+DEST=$HOME/public_html/packages/Packages.gz
+
+cd $WORKDIR/
+
+# Clean out packages in the binary dirs
+for dir in $WORKDIR/packages/binary-all $WORKDIR/packages/binary-i386; do
+    for deb in $(find $dir -type f -name \*.deb | \
+	perl -ple 's|.*/||g; s/_.*$//g' | sort -u); do
+      only_one $dir $deb deb
+    done
+done
+
+# Clean out the source dir
+for src in $(find $WORKDIR/packages/source -type f -name \*.dsc |
+           perl -ple 's|.*/||g; s/_.*$//g' | sort -u); do
+    only_one $WORKDIR/packages/source     $src diff.gz
+    only_one $WORKDIR/packages/source     $src dsc
+    only_one $WORKDIR/packages/source     $src changes
+done
+
+# Handle the binary packages first
+dpkg-scanpackages -m 'Debian GNU/Linux binary-all'  packages/binary-all  \
+         /dev/null 2>$LOGFILE   > $TMPPKG
+dpkg-scanpackages -m 'Debian GNU/Linux binary-i386' packages/binary-i386 \
+         /dev/null 2>>$LOGFILE >> $TMPPKG
+gzip -9fq <$TMPPKG > $DEST
+
+# Now for the sources
+dpkg-scansources packages/source/ > packages/source/Sources
+gzip -9fq <packages/source/Sources>packages/source/Sources.gz
+
+# All done
+exit 0

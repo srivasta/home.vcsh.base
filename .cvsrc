@@ -1,0 +1,5 @@
+checkout        -A
+diff            -uBbwNp
+log             -N
+update          -dP
+cvs             -z3

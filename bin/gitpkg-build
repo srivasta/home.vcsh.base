@@ -1,0 +1,135 @@
+#!/bin/bash
+# gitpkg hook script to build packages locally after export
+#
+# GITPKG_TREEISH
+#        The user-passed debian 'branch' tree-ish that gitpkg was
+#        invoked to export.
+
+# GITPKG_ORIG_TREEISH
+#        The 'origbranch' tree-ish that gitpkg was invoked with.  This
+#        will be empty if only a single 'branch' tree-ish was
+#        specified.
+
+# DEB_SOURCE
+#        The name of the source package to create, without any
+#        versioning.  As seen in the Source: field of dpkg-
+#        parsechangelog(1).
+
+# DEB_VERSION
+#        The version of the source package to create, without any
+#        epoch.  As seen in the name of the .diff.gz and .dsc files.
+
+# UPSTREAM_VERSION
+#        The version of the source package to create, without any
+#        debian version.  As seen in the name of the orig tarball.
+#        For native packages this will be the same as DEB_VERSION.
+
+# DEB_ORIG
+#        The full versioned filename of the orig tarball to use or
+#        create.  This variable is empty for native packages without a
+#        Debian version part.
+
+# DEB_DSC
+#        The full filename of the package .dsc that will be or has
+#        been created.
+
+# DEB_PACKAGE
+#        The directory name of the debianised source tree to pass to
+#        dpkg-source(1).
+
+# REPO_DIR
+#        An absolute path to the top level directory of the git repo
+#        we are exporting from.  Usually, if you need to look out of
+#        the tree that you were dropped in, you're probably doing
+#        something (at the) wrong (time), but there are exceptions,
+#        and being able to query git-config options is one of them.
+#        That's mostly what this one is for right now.  See the
+#        repo-config-helper documented below.  Be careful if you do
+#        use it for much else.
+
+
+# We're out of the repo tree, but want to check git-config
+. /usr/share/gitpkg/hooks/repo-config-helper
+
+# See dpkg-buildpackage(1) for what's valid to set in this one
+while read opt; do
+    if [ "$opt" == "PACKAGE_NAME_HERE" ]; then
+        BUILD_OPTS+=("$DEB_SOURCE")
+    else
+        BUILD_OPTS+=("$opt")
+    fi
+done < <(repo_config --get-all gitpkg-build.options)
+
+BUILD_CMD="$(repo_config --get gitpkg-build.command)"
+if [ -z "$BUILD_CMD" ]; then
+    echo "No builder command specified. Aborting"
+    exit 1
+fi
+
+ARCHITECTURE=$(dpkg-architecture -qDEB_BUILD_ARCH)
+MLINT="lintian -L '>=normal' -L '+>=wishlist/possible' -L '+pedantic/certain' --info --show-overrides --color=auto"
+LINT="lintian -L '>=normal' -L '+>=wishlist/possible' -L '+pedantic/certain' "
+# Having a veto can be handy sometimes
+if [ "$(repo_config --get --bool gitpkg-build.ask-first)" = "true" ]
+then
+    printf "Build binary packages from $DEB_DSC now (Y/n)? "
+    read -e yesno
+    case "$yesno" in
+        N* | n*)
+            echo "Ok,  Aborting"
+            echo
+            exit 0
+            ;;
+        *) ;;
+    esac
+fi
+
+DATE="$(date +%Y%m%d+%H.%M 2>/dev/null)"
+
+echo "cd $DEB_PACKAGE && $BUILD_CMD " "${BUILD_OPTS[@]}" \
+     "> ../build-${DEB_SOURCE}_${DEB_VERSION}_${DATE}.log"
+( cd "$DEB_PACKAGE" &&
+  $BUILD_CMD "${BUILD_OPTS[@]}" 2>&1 |
+      tee ../build-${DEB_SOURCE}_${DEB_VERSION}_${DATE}.log
+) || exit 1
+
+RESULTS_DIR="$(repo_config --get gitpkg-build.results-dir)"
+DEBARCHIVE="$(repo_config --get gitpkg-build.debarchive)"
+
+if [ -n "$DEBARCHIVE" ] && [ -d "$DEBARCHIVE"  ]; then
+    OLD_CHANGES=$(ls -1 "${DEBARCHIVE}"/"${DEB_SOURCE}"_*_${ARCHITECTURE}.changes | sort | tail -n 1)
+fi
+
+if [ -n "$RESULTS_DIR" ] && [ -d "$RESULTS_DIR/${DEB_SOURCE}" ]; then
+    (
+        cd "$RESULTS_DIR/${DEB_SOURCE}"
+        CHANGES=$(ls -1 "${DEB_SOURCE}"_* | grep ${ARCHITECTURE}.changes | sort | tail -n 1)
+        if [ -f "$CHANGES" ]; then
+            if $LINT "$CHANGES" >&/dev/null; then
+                if [ $? -gt 1 ]; then
+                    echo "FATAL error running lintian"
+                    exit 254
+                fi
+                $MLINT "$CHANGES"
+                NOSIGN=YES
+            fi
+            if [ -f "$OLD_CHANGES" ]; then
+                debdiff -q --diffstat --show-moved --controlfiles ALL --dirs -w "$OLD_CHANGES" "$CHANGES"
+                if [ $? -gt 2 ]; then
+                    echo "FATAL error running debdiff"
+                    exit 255
+                fi
+            else
+                echo "No Old changes file found for ${DEB_SOURCE} ${ARCHITECTURE}"
+            fi
+            if [ -z "$NOSIGN" ]; then
+                debsign "$CHANGES"
+            fi
+
+        else
+            echo "No changes file found for ${DEB_SOURCE} ${ARCHITECTURE}.changes"
+        fi
+    )
+fi
+
+exit 0
