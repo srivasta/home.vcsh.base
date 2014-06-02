@@ -51,6 +51,17 @@ Makefile.in
 *.gcda
 *.gcov
 
+# IDE support files
+/.classpath
+/.launch
+/.project
+/.settings
+/*.launch
+/*.tmproj
+/ivy*
+/eclipse
+.eclipse/
+eclipse-bin
 
 # It's better to unpack these files and commit the raw source because
 # git has its own built in compression methods.
@@ -118,3 +129,19 @@ TAGS
 tags
 !tags/
 
+# Package Files #
+*.jar
+*.war
+*.ear
+
+# Temporary file directory
+tmp/
+var/
+
+# Perl modules
+Makefile.old
+MANIFEST.bak
+META.yml
+MYMETA.yml
+nytprof.out
+pm_to_blib
