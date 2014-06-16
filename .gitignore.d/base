@@ -126,7 +126,8 @@
 !/etc/crontab
 !/etc/dir_colors
 !/etc/geek
-!/etc/global-gitignore
+!/etc/git
+!/etc/git/ignore
 !/etc/kbd
 !/etc/keymodrc
 !/etc/macro
