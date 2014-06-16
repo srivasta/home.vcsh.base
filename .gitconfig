@@ -31,7 +31,7 @@
 
 [gitpkg-build]
 	results-dir = /scratch/sandbox/staging/results
-	debarchive = /usr/local/debarchive
+	debarchive = /backup/debarchive
 	command = ssh
 	options = -t
 	options = 192.168.1.41
