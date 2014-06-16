@@ -15,7 +15,10 @@ SECLIB=lib/.sec/
 
 34      3    * * *   ($HOME/sbin/check_watch)&
 44      3    * * *   ($HOME/sbin/kernel-alert )&
-12      4    * * *   ikiwiki --setup $HOME/.ikiwiki/manoj  --refresh >> $HOME/var/log/ikiwiki-build.log 2>&1 &
+#12      4    * * *   ikiwiki --setup $HOME/.ikiwiki/manoj.setup  --refresh >> $HOME/var/log/ikiwiki-build.log 2>&1 &
+1        0  * * *   ikiwiki --setup $HOME/.ikiwiki/manoj.setup   >> $HOME/var/log/ikiwiki-build.log 2>&1 &
+#0       0    * * *   ikiwiki-calendar $HOME/.ikiwiki/manoj.setup  'sidebar and posts/* and !*/Discussion'
+
 14      5    * * *   ($HOME/sbin/index-files >& $HOME/var/log/index.log )&
 52      7    * * 4   ($HOME/sbin/machine-update -m)&
 0       0    1 * *   ($HOME/sbin/rotate_agentlog)&
