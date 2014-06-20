@@ -1,0 +1,139 @@
+#! /usr/bin/perl
+#                              -*- Mode: Cperl -*- 
+# blogit.pl --- 
+# Author           : Manoj Srivastava ( srivasta@golden-gryphon.com ) 
+# Created On       : Wed Dec 20 11:27:19 2006
+# Created On Node  : glaurung.internal.golden-gryphon.com
+# Last Modified By : Manoj Srivastava
+# Last Modified On : Tue Apr  1 20:19:26 2008
+# Last Machine Used: anzu.internal.golden-gryphon.com
+# Update Count     : 16
+# Status           : Unknown, Use with caution!
+# HISTORY          : 
+# Description      : 
+# 
+# 
+
+use strict;
+use Time::ParseDate;
+
+# root of my wiki checkout
+my $blog_top = glob "~/src/wiki.manoj";
+
+# All the work is done in the blog directory
+die "No Blog dir $blog_top, aborting.\n" unless -d "$blog_top";
+chdir "$blog_top" or die "could not chdor to $blog_top:$!";
+warn "cd $blog_top\n";
+
+
+# Properly escape the blog title to create a file name. This has to
+# also match the arch source file patterns
+my $title = $ARGV[0];
+$title =~ y/ /_/;
+$title =~ s/([^-[:alnum:]_+\/.])/"__".ord($1)."__"/eg;
+
+my $seconds_since_jan1_1970 = time;
+
+if (defined $ARGV[1] && $ARGV[1]) {
+  $seconds_since_jan1_1970 = parsedate($ARGV[1]);
+}
+
+# Get the current time, in order to create the blog entry
+my $now_string = localtime($seconds_since_jan1_1970);
+my ($sec,$min,$hour,$mday,$mon,$year,$wday,$yday,$isdst) =
+  localtime($seconds_since_jan1_1970);
+$year += 1900;
+$mon++;
+my $month= sprintf ("%02d", $mon);
+my $date = sprintf ("%02d", $mday);
+
+# make sure the full directory path to the blog entry exists, creating
+# path elements as required.
+foreach my $dir ("blog", "blog/$year", "blog/$year/$month", 
+                  "blog/$year/$month/$date") {
+  if (! -d "$dir") {
+    # Create the dir
+    warn "DEBUG: creating $dir.\n";
+    mkdir "$dir";
+    # Add the newly created directory to the repository
+    # warn "$TLA add $dir\n"; 
+    # system("$TLA add $dir");
+  }
+}
+
+# Create the blog post file, initializing it with stock content.
+warn "creating blog/$year/$month/$date/$title.org\n";
+open(POST, ">blog/$year/$month/$date/$title.org")
+  or die "Could not open post blog/$year/$month/$date/$title.org:$!";
+print POST <<EOF;
+#+TITLE:     $ARGV[0]
+#+AUTHOR:    Manoj Srivastava
+#+EMAIL:     srivasta\@debian.org
+#+DATE:      <$now_string>
+#+LANGUAGE:  en
+#+OPTIONS:   H:0 num:nil toc:nil \\n:nil \@:t ::t |:t ^:t -:t f:t *:t TeX:t LaTeX:t skip:nil d:nil tags:not-in-toc
+#+INFOJS_OPT: view:showall toc:nil ltoc:nil mouse:underline buttons:nil path:http://orgmode.org/org-info.js
+#+LINK_UP:   http://www.golden-gryphon.com/blog/manoj/
+#+LINK_HOME: http://www.golden-gryphon.com/
+[[!meta author="Manoj"]]
+[[!meta license="GPL"]]
+[[!meta title="$ARGV[0]"]]
+[[!tag misc]]
+
+
+EOF
+  ;
+close POST;
+
+# Add the file to the repo.
+#system("$TLA add blog/$year/$month/$date/$title.mdwn");
+
+# Make sure that the annual archive for this blog post is present
+if (! -e "archives/$year.mdwn") {
+  # If not, create the archive index
+  warn "Creating archives/$year.mdwn\n";
+  open (INDEX, ">archives/$year.mdwn")
+    or die "Could not create annual index: $!";
+  print INDEX <<EOF;
+[[!meta title="Archives for $year"]]
+[[!meta author="Manoj"]]
+[[!meta license="GPL"]]
+[[!inline pages="blog/* and !*/Discussion and creation_year($year)" rootpage="blog" atom="no" rss="no" show="0"]]
+
+EOF
+  close INDEX;
+  # Add the index to the repo
+  # system("$TLA add archives/$year.mdwn");
+}
+
+# Make sure that the path for the monthly index exists
+if (! -d "archives/$year") {
+  # If not, create it, and add it to the repo
+  warn "Creating dir archives/$year\n";
+  mkdir "archives/$year";
+  # system("$TLA add archives/$year");
+}
+
+# Now that the path is present, make sure that the monthly index
+# exists.
+if (! -e "archives/$year/$month.mdwn") {
+  # If not, create the monthly index
+  warn "Creating archives/$year/$month.mdwn\n";
+  open (INDEX, ">archives/$year/$month.mdwn")
+    or die "Could not create monthly index index: $!";
+  print INDEX <<EOF;
+[[!meta title="Archives for $year/$month"]]
+[[!meta author="Manoj"]]
+[[!meta license="GPL"]]
+[[!inline pages="blog/* and !*/Discussion and creation_year($year) and creation_month($month)" rootpage="blog" atom="no" rss="no" show="0"]]
+
+EOF
+  close INDEX;
+  # Add monthly index to the archive
+  # system("$TLA add archives/$year/$month.mdwn");
+}
+
+# All done. Finally, call emacsclient on the blog file to edit the
+# entry.
+exec "emacsclient -c blog/$year/$month/$date/$title.org";
+

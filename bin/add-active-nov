@@ -1,0 +1,100 @@
+#!/usr/group/bin/perl
+
+# put this line in your .procmailrc:
+# TRAP='add-active $LASTFOLDER'
+
+if ($#ARGV < 0) {
+  print "usage in .procmailrc: TRAP='$0 \$LASTFOLDER'\n";
+  exit 64;
+}
+
+if ($ARGV[0] eq "/dev/null") {
+  exit 0;
+}
+
+($dir=$ARGV[0]) =~ s#/[0-9]+$##;
+($num=$ARGV[0]) =~ s#.*/([0-9]+)$#$1#;
+($group=$dir)   =~ s#/#\.#g;
+
+$lines      = 0;
+$chars      = (stat($ARGV[0]))[7];
+$references = "";
+
+open (HEADERS, "formail -c -a Subject: -X subject: -a From: -X from: -a Date: -X date: -a Message-ID: -X message-id: -X in-reply-to: -X references: -X lines: -X content-length: < $ARGV[0] |") || "Could not open formail";
+while(<HEADERS>)
+{
+  chop;
+
+  # remove embedded tabs.  they are evil to the .nov file.
+  s/\t/ /;
+  if (s/^from:\s*//i) {
+      $from = $_;
+    }
+  elsif (s/^subject:\s*//i) {
+    $subject = $_;
+  }
+  elsif (s/^date:\s*//i) {
+    $date = $_;
+  }
+  elsif (s/^message-id:\s*//i) {
+    $id = $_;
+  }
+  elsif (s/^references:\s*//i) {
+    s/.*\t([^\t]+)/\1/;
+    $references = $_;
+  }
+  elsif (s/^in-reply-to:\s*//i) {
+    s/.*\t([^\t]+)/\1/;
+    if (   $references eq "" && $_ =~ /(<[^>]+>)/) {
+      $references = $1;
+    }
+  }
+  elsif (s/^lines:\s*//i) {
+    $lines = $_;
+  }
+  elsif (s/^content-length:\s*//i) {
+    $chars = $_;
+  }
+  else {
+    die "Unknown field: $_";
+  }
+}
+
+close (HEADERS);
+
+if (-f "$dir/.overview") {
+  $nov = "$dir/.overview";
+} elsif (-f "$dir/.nov") {
+  $nov = "$dir/.nov";
+} else {
+  $nov = "$dir/.overview";
+}
+
+system("lockfile -! $nov.lock") || die "Could not get lock";
+
+open (NOV, ">>$nov") || die "Could not open $nov";
+printf NOV ("$num\t$subject\t$from\t$date\t$id\t$references\t$chars\t$lines\t\n");
+close (NOV);
+
+system("rm -f $nov.lock");
+
+$act = "$ENV{'HOME'}/Mail/active";
+$actold = $act . ".old";
+
+system("lockfile -! $act.lock") || die "Could not get lock";
+
+rename($act,$actold) || die "rename $act $!";
+
+open(ACTIVE, "$actold") || die "Could not open $actold";
+open(NEW_ACTIVE, ">$act") || die "Could not open $act";
+
+while (<ACTIVE>) {
+  s/^$group [0-9]+/$group $num/;
+  print NEW_ACTIVE;
+}
+
+close ACTIVE;
+close NEW_ACTIVE;
+system("rm -f $act.lock");
+
+

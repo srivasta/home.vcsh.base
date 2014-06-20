@@ -1,0 +1,10 @@
+
+
+$ wget http://chris-lamb.co.uk/site_media/lambigram.png
+$ convert lambigram.png \
+   -delay 5 -gravity center -compose Src-over -background white -dispose previous \
+   $(for X in $(seq 0 10 180); do echo \( -clone 0 -rotate $X \); done) \
+   -extent 90x90 out.gif
+$ sensible-browser out.gif
+
+http://chris-lamb.co.uk/wp-content/2009/lambigram_anim.gif 

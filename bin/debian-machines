@@ -1,0 +1,43 @@
+#!/bin/sh
+usage() {
+    echo "Usage: $0 [-h|--help|-m <machine>|<architecture>]"
+    echo
+    echo "Performs an ldap query against db.debian.org to retrieve information"
+    echo "about computers admined by Debian."
+    echo
+    echo "If <architecture> is given, only list porter systems for that architecture."
+    echo "If no arguments are given, list all porter systems."
+    echo
+    echo "  -h,--help    Print this help and exit"
+    echo "  -m <machine> Retrieve the full stanza for a specific machine"
+    exit $1
+}
+
+if [ $# -ge 1 ]; then
+    case "$1" in
+        -h|--help)
+            usage 0
+            ;;
+        -m)
+            shift;
+            if [ -z "$1" ]; then
+                usage 1
+            fi
+            FILTER="(|"
+            while [ $# -ge 1 ]; do
+                FILTER="$FILTER(host=$1)"
+                shift;
+            done
+            FILTER="$FILTER)"
+            ATTR=
+            ;;
+        *)
+            FILTER="(&(architecture=$1) (purpose=porterbox))"
+            ATTR="host distribution status sshRSAHostKey"
+            ;;
+    esac
+else
+    FILTER="(purpose=porterbox)"
+    ATTR="host architecture distribution status sshRSAHostKey"
+fi
+ldapsearch -x -H ldap://db.debian.org -b ou=hosts,dc=debian,dc=org "$FILTER" $ATTR | grep -v '^\(dn\|#\)'
