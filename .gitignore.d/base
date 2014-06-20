@@ -3,9 +3,13 @@
 !/.aptitude/config
 !/bin
 !/bin/411
+!/bin/add-active-nov
+!/bin/base64-decode
+!/bin/base64-encode
 !/bin/bbdb
 !/bin/bbdb-areacode-split
 !/bin/bbdb.old
+!/bin/blogit
 !/bin/blq
 !/bin/bookmarks-menu
 !/bin/boot_pkg.sh
@@ -21,6 +25,7 @@
 !/bin/connect-emacs
 !/bin/createfs
 !/bin/daemons-running.sh
+!/bin/debian-machines
 !/bin/diald-cmd
 !/bin/dir2dot
 !/bin/distance.pl
@@ -77,6 +82,8 @@
 !/bin/process-mail-from-cache.pl
 !/bin/prunepwd
 !/bin/ptl
+!/bin/qp-decode
+!/bin/qp-encode
 !/bin/quietify
 !/bin/rails_graph.rb
 !/bin/ratelimit
@@ -86,6 +93,7 @@
 !/bin/relink
 !/bin/remote_build
 !/bin/rmessage
+!/bin/rotations
 !/bin/rsync-get
 !/bin/rsync-put
 !/bin/ruby_html.rb
@@ -109,6 +117,7 @@
 !/bin/update_archive
 !/bin/update-wiki
 !/bin/utube
+!/bin/vcsh-update-gitignore
 !/bin/vcs-pkg-1.pl
 !/bin/vless
 !/bin/watch.fn
@@ -196,6 +205,7 @@
 !/.reportbugrc
 !/.rootrc
 !/sbin
+!/sbin/activate_volume_groups
 !/sbin/check_watch
 !/sbin/convert_html.sh
 !/sbin/do-gnus
