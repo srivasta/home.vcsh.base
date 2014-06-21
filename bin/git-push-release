@@ -10,7 +10,14 @@ withecho () {
 }
 action='withecho'
 #action='echo'
+do_push=
+case $0 in
+    *git-push-release)
+        do_push=1;
+        ;;
+    *)
 
+esac
 
 test -n "$pkg" || echo >&2 No package name provided
 test -n "$pkg" || exit 1
@@ -43,41 +50,38 @@ tag_dir ()
     if [ ! -e ".git/refs/tags/debian/${non_epoch_version}" ]; then
         $action git tag -s -m"Released version ${version}" debian/${non_epoch_version} master;
     fi
-    $action git push origin master:master
+    if [[ $do_push ]]; then
+        $action git push origin master:master
+    fi
 }
 
-tag_dir_debian ()
+tag_upstream ()
 {
     echo "Processing tag_dir_debian"
     if [ ! -e ".git/refs/tags/upstream/${upstream_version}" ]; then
         $action git tag -s -m"[$pkg]: Released version ${version}" upstream/${upstream_version} upstream
     fi
-    $action git push origin upstream:upstream pristine-tar:pristine-tar
+    if [[ $do_push ]]; then
+        $action git push origin upstream:upstream pristine-tar:pristine-tar
+    fi
 }
 
 if [[ -d "$pkg" ]]; then
-    if [[ -n "$debian_version" ]]; then
-        echo >&2 We have an unversioned source dir, and yet a debian version
-        echo >&2 "[ $debian_version ]"
-        echo >&2 This is confusing
-        exit 5
-    fi
     echo cd "$pkg"
     cd "$pkg"
     tag_dir
-elif [[ -d "$pkg-$upstream_version" ]]; then
-    if [[ -z "$debian_version" ]]; then
-        echo >&2 We have an versioned source dir, and yet no debian version
-        echo >&2 This is confusing
-        exit 6
+    if [[ -n "$debian_version" ]]; then
+        tag_upstream
     fi
-    echo cd "$pkg-$upstream_version"
-    cd "$pkg-$upstream_version"
-    tag_dir
-    tag_dir_debian
+else
+    echo >&2 Could not find package working dir
+    exit 2
 fi
 
-$action git push --tags
+if [[ $do_push ]]; then
+    $action git push --tags
+fi
+
 
 # cd $workdir_top
 
