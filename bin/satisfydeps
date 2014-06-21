@@ -1,6 +1,6 @@
 #! /usr/bin/perl -w
 # File: newparser.pl
-# Time-stamp: <2014-05-04 18:19:17 srivasta>
+# Time-stamp: <2014-06-20 21:17:09 srivasta>
 #
 # Copyright (C) 2008 by Manoj Srivastava
 #
@@ -65,28 +65,30 @@ sub get_facts ($) {
   close $STATUS || croak "Could not close /var/lib/dpkg/status: $!\n";
 }
 
+my @missing;
 my $line = $source->{'Build-Depends'};
 $line =~ s/\s*\n\s*/ /msxg;
 my $dependencies = Dpkg::Deps::deps_parse( $line, reduce_arch => 1 );
 
-if ( $dependencies->is_empty() ) {
-  $line = $source->{'Build-Depends-Indep'};
-  $line =~ s/\s*\n\s*/ /msxg;
-  $dependencies = Dpkg::Deps::deps_parse( $line, reduce_arch => 1 );
+if ( !$dependencies->is_empty() ) {
+  $dependencies->simplify_deps($facts);
+  push @missing, $dependencies->get_deps();
 }
 
-exit 0 if $dependencies->is_empty();
-my @missing;
+$line = $source->{'Build-Depends-Indep'};
+$line =~ s/\s*\n\s*/ /msxg;
+$dependencies = Dpkg::Deps::deps_parse( $line, reduce_arch => 1 );
+if ( !$dependencies->is_empty() ) {
+  $dependencies->simplify_deps($facts);
+  push @missing, $dependencies->get_deps();
+}
+
+exit 0 unless @missing;
 
 #  Now, either we have         Dpkg::Deps::Simple  or Dpkg::Deps::AND
 #  Dpkg::Deps::AND can contain Dpkg::Deps::Simple  or Dpkg::Deps::OR objects
 #  Dpkg::Deps::OR  can contain Dpkg::Deps::Simple  objects only
 
-# Figure out what is missing
-$dependencies->simplify_deps($facts);
-exit 0 if $dependencies->is_empty();
-
-push @missing, $dependencies->get_deps();
 foreach my $dep (@missing) {
   next if $dep->is_empty();
   if ( ref $dep eq 'Dpkg::Deps::Simple' ) {
