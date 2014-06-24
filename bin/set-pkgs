@@ -14,7 +14,7 @@ aptitude -R --schedule-only unmarkauto `aptitude -F "%?p" search \~E`
 aptitude -R --schedule-only markauto `aptitude -F "%?p" search \~i\!\~E`
 ##
 ## 3. Select packages for installation, then apply versions:
-## # aptitude -R --schedule-only install `cat aptitude-installed`
+aptitude -R --schedule-only install `cat aptitude-installed`
 aptitude -R --schedule-only install `cat aptitude-installed-ver`
 ##
 ## 4. Mark auto-installed packages as such:
