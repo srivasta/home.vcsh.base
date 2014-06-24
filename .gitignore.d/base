@@ -42,6 +42,7 @@
 !/bin/gen_color.pl
 !/bin/getauth
 !/bin/getdctrl
+!/bin/get-pkgs
 !/bin/get_volume
 !/bin/git-add-backup-hook
 !/bin/git-add-backup-hook.post-commit
@@ -100,6 +101,7 @@
 !/bin/satisfydeps
 !/bin/scan_packages
 !/bin/sendtc
+!/bin/set-pkgs
 !/bin/show-open-ports
 !/bin/sigtrace
 !/bin/ssh_attach.sh
@@ -169,6 +171,10 @@
 !/.kernel-alertrc
 !/.keymodrc
 !/.lclintrc
+!/lib
+!/lib/aptitude-autoinstalled
+!/lib/aptitude-installed
+!/lib/aptitude-installed-ver
 !/.login
 !/.mailcap
 !/media
