@@ -1,0 +1,25 @@
+#!/bin/bash
+# Based on an email from Owen Heisler <owenh000@gmail.com> on debian-devel
+
+set -e
+
+## 1. Make sure /etc/apt/sources.list and /etc/apt/preferences are correct
+##    and update the lists:
+aptitude update
+##
+## 2. Select essential packages for installation, unmarkauto them, and
+##    markauto non-essential packages:
+aptitude -R --schedule-only install `aptitude -F "%?p" search \~E`
+aptitude -R --schedule-only unmarkauto `aptitude -F "%?p" search \~E`
+aptitude -R --schedule-only markauto `aptitude -F "%?p" search \~i\!\~E`
+##
+## 3. Select packages for installation, then apply versions:
+## # aptitude -R --schedule-only install `cat aptitude-installed`
+aptitude -R --schedule-only install `cat aptitude-installed-ver`
+##
+## 4. Mark auto-installed packages as such:
+aptitude -R --schedule-only markauto `cat aptitude-autoinstalled`
+##
+## 5. Run aptitude interactively, make sure it is doing what it ought, then
+##    apply either with 'g' or:
+aptitude -y install

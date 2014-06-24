@@ -1,0 +1,11 @@
+#!/bin/bash
+# Based on an email from Owen Heisler <owenh000@gmail.com> on debian-devel
+
+## 1. Save list of all installed packages:
+aptitude -F "%?p" search \~i >| aptitude-installed
+
+## 2. Same as previous but with versions:
+aptitude -F "%?p=%?V" search \~i | sed 's/ //g' >| aptitude-installed-ver
+
+##3. Save list of the packages that have been automatically installed:
+aptitude -F "%?p" search \~i\~M >| aptitude-autoinstalled
