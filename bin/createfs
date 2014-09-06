@@ -468,7 +468,8 @@ read_cfg() {
     # The site given to debootstrap to download initial packages
     # from. Also added to the initial sources.list.
     #MIRRORSITE=http://mirror.peer1.net/debian/
-    MIRRORSITE=http://192.168.0.21:3142/mirror.peer1.net/debian/
+    #MIRRORSITE=http://192.168.0.21:3142/mirror.peer1.net/debian/
+    MIRRORSITE=http://192.168.0.21:3142/mirrors.modwest.com/debian/
     #MIRRORSITE=http://http.us.debian.org/debian
     #MIRRORSITE=http://192.168.0.21/debian
     #MIRRORSITE=http://glaurung.internal.golden-gryphon.com:9999/debian
@@ -651,7 +652,7 @@ cleanup () {
 
 fail() {
     echo >&2 "=============================================="
-    clean_debian || true
+    #clean_debian || true
     echo >&2 "FAILED: $1"
     echo >&2 "=============================================="
     exit 1
