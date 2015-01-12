@@ -1,12 +1,12 @@
 [user]
         name  = Manoj Srivastava
         email = srivasta@golden-gryphon.com
-	signingkey = 0xC5779A1C
+        signingkey = 0xC5779A1C
 
 [diff]
         renames     = copies
         renamelimit = 200
-	mnemonicprefix = true
+        mnemonicprefix = true
 
 [mergetool "ediff"]
        cmd = emacsclient --eval \"(git-mergetool-emacsclient-ediff \\\"$LOCAL\\\" \\\"$REMOTE\\\" \\\"$BASE\\\" \\\"$MERGED\\\")\"
@@ -15,32 +15,32 @@
     prompt = false
 
 [push]
-	default = upstream
+        default = upstream
 [core]
-	excludesfile = /home/srivasta/etc/global-gitignore
+        excludesfile = /home/srivasta/etc/global-gitignore
 #[init]
-#	templatedir = $XDG_CONFIG_HOME/git_templates
+#       templatedir = $XDG_CONFIG_HOME/git_templates
 
 [gitpkg]
-	deb-dir = /scratch/sandbox/staging/input
-	prebuild-target = clean
+        deb-dir = /scratch/sandbox/staging/input
+        prebuild-target = clean
         #pre-export-hook = /usr/share/gitpkg/hooks/pristine-tar-pre-export-hook
-	exit-hook = /home/srivasta/bin/gitpkg-build
-	create-fake-orig = false
-	force-overwrite-orig = false
+        exit-hook = /home/srivasta/bin/gitpkg-build
+        create-fake-orig = false
+        force-overwrite-orig = false
 
 [gitpkg-build]
-	results-dir = /scratch/sandbox/staging/results
-	debarchive = /backup/debarchive
-	command = ssh
-	options = -t
-	options = 192.168.1.41
-	options = bin/remote_build
-	options = PACKAGE_NAME_HERE
-	# command = pdebuild
-	# options = --auto-debsign
-	# options = --
-	# options = --twice
+        results-dir = /scratch/sandbox/staging/results
+        debarchive = /backup/debarchive
+        command = ssh
+        options = -t
+        options = 192.168.1.41
+        options = bin/remote_build
+        options = PACKAGE_NAME_HERE
+        # command = pdebuild
+        # options = --auto-debsign
+        # options = --
+        # options = --twice
 
 ##### Merging  #############
 # Sometimes when you ask git to merge branch A into branch B, it will
@@ -88,7 +88,7 @@
         branch      = auto
         ui          = auto
         interactive = auto
-	grep        = auto
+        grep        = auto
 
 [color "branch"]
        current = green
@@ -107,7 +107,7 @@
        untracked = red
 
 [column]
-	ui = auto
+        ui = auto
 
 [branch]
         autosetupmerge = true
@@ -162,10 +162,10 @@
         df            = diff
         llog          = log --date=local
         k             = !gitk
-	new           = diff ORIG_HEAD
+        new           = diff ORIG_HEAD
 
         amend         = commit --amend
-	up            = pull --rebase
+        up            = pull --rebase
 
         in-tag        = name-rev --name-only
         in-br         = branch --contains
@@ -190,6 +190,8 @@
         lg            = log -p
         lpc           = log -p -c --no-merges
         llog          = log --date=local
+        l             = log --pretty=format:'%C(yellow)%h%C(white) %an <%ae> %>|(80)%ai%Creset%n%C(bold)%w(0,4,4)%s%C(reset)%n%+b'
+        ll            = log --stat
 
         # Still show author and title, but in a graph like fashion
         graph         = log --graph --pretty=short --decorate   --abbrev-commit --branches
@@ -230,10 +232,10 @@
 
 
 
-    get-tracking-remote = !git config branch.$(git name-rev --name-only HEAD).remote | awk '{printf \"%s%s\", (($1 == \".\") ? \"\" : $1), (($1 != \".\") ? \"/\" : \"\")}'
-    get-tracking-branch = !basename $(git config branch.$(git name-rev --name-only HEAD).merge)
-    show-tracking       = !echo \"$(git get-tracking-remote)$(git get-tracking-branch)\"
-    diff-tracking       = !git diff $(git show-tracking)
-	ctags = !.git/hooks/ctags
+        get-tracking-remote = !git config branch.$(git name-rev --name-only HEAD).remote | awk '{printf \"%s%s\", (($1 == \".\") ? \"\" : $1), (($1 != \".\") ? \"/\" : \"\")}'
+        get-tracking-branch = !basename $(git config branch.$(git name-rev --name-only HEAD).merge)
+        show-tracking       = !echo \"$(git get-tracking-remote)$(git get-tracking-branch)\"
+        diff-tracking       = !git diff $(git show-tracking)
+        ctags = !.git/hooks/ctags
 [gpg]
-	program = gpg
+        program = gpg
