@@ -38,6 +38,7 @@
 !/bin/firefox-ssh-handler.zsh
 !/bin/fix-whitespace.sh
 !/bin/fmtbl
+!/bin/gcclint
 !/bin/gencidrzone
 !/bin/gen_color.pl
 !/bin/getauth
@@ -46,6 +47,7 @@
 !/bin/get_volume
 !/bin/git-add-backup-hook
 !/bin/git-add-backup-hook.post-commit
+!/bin/git-mergetool-emacsclient-ediff
 !/bin/gitpkg-build
 !/bin/git-post-checkout-hook
 !/bin/git-post-commit-hook
@@ -55,7 +57,6 @@
 !/bin/git-rebase-and-merge
 !/bin/git-tag-release
 !/bin/git-wtf
-!/bin/glint
 !/bin/g+lint
 !/bin/g++lint
 !/bin/google-draw.pl
