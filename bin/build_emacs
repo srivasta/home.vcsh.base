@@ -1,0 +1,45 @@
+#!/bin/bash
+
+WORKDIR=${1:-/usr/local/src/emacs}
+cd $WORKDIR
+OLD=ksiwrjcy
+
+set -e
+
+git checkout master;
+git fetch -v;
+git pull -v;
+#git diff ORIG_HEAD;
+git checkout debian
+#git merge --no-ff -m'[debian]: merged from master.' master
+git rebase master
+
+
+STALES=$(for f in `find . -name '*.el'` ; do
+            if [ -f ${f}c -a ${f}c -ot $f ] ; then
+                echo ${f}c ;
+            fi
+        done)
+echo "Stale files: $STALES" >&2
+sleep 3
+echo
+
+for f in $STALES ; do mv ${f}{,.$OLD} ; done
+
+## test ! -e Makefile || make maintainer-clean
+./configure --with-x-toolkit=lucid --with-dbus --with-gpm --with-pop=yes \
+     --with-xpm --with-jpeg --with-tiff --with-gif --with-png --with-x \
+	--with-imagemagick --with-xft --with-rsvg --with-libotf          \
+          --without-w32 --with-sound=yes
+
+for f in $STALES ; do
+    if [ -f $f ]
+    then rm ${f}.$OLD
+    else mv ${f}{.$OLD,}
+        echo $f wasn\'t remade >&2
+    fi
+done
+
+#make bootstrap
+make
+#make bootfast
