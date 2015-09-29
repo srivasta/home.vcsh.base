@@ -13,6 +13,9 @@ SECLIB=lib/.sec/
 50      2    * * 3,7 /usr/bin/find $HOME/var/spool/news/nnml -name "^[0-9]*$" -mtime +30 -print0 | xargs -0r bzip2 -9
 50      2    2 * *   /usr/bin/find /backup/mail -type f -name "[0-9_]*" -mtime +30 -print0 | xargs -0r bzip2 -9
 
+44      3    * * 6    ($HOME/bin/build_emacs >& $HOME/var/log/emacs.log)&
+
+
 34      3    * * *   ($HOME/sbin/check_watch)&
 44      3    * * *   ($HOME/sbin/kernel-alert )&
 #12      4    * * *   ikiwiki --setup $HOME/.ikiwiki/manoj.setup  --refresh >> $HOME/var/log/ikiwiki-build.log 2>&1 &
