@@ -1,3 +1,4 @@
+0
 #! /bin/bash
 #                               -*- Mode: Sh -*-
 # remote_build ---
@@ -116,7 +117,12 @@ fi
 
 # Mount the hostdir
 test -n "$VERBOSE" || echo >&2 'Mount the host dir'
-test -d $mount_point/input || $action sudo mount $mount_point
+#test -d $mount_point/input || $action sudo mount $mount_point
+mountpoint -q $workdir_top || \
+    mount -t 9p -o trans=virtio,version=9p2000.L,ro  $workdir_top $workdir_top
+mountpoint -q $results_dir || \
+    mount -t 9p -o trans=virtio,version=9p2000.L,rw  $results_dir $results_dir
+
 
 if [[ ! -d "$workdir_top/$pkg" ]]; then
     echo >&2 No working directory found for "$pkg"
