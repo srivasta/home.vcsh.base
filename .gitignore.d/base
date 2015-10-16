@@ -14,6 +14,7 @@
 !/bin/bookmarks-menu
 !/bin/boot_pkg.sh
 !/bin/build_cross_toolchain
+!/bin/build_emacs
 !/bin/bundle
 !/bin/cfcat
 !/bin/cfget
@@ -62,6 +63,7 @@
 !/bin/google-draw.pl
 !/bin/ipod.sh
 !/bin/j2js
+!/bin/keystats
 !/bin/lessopen
 !/bin/list-untracked.sh
 !/bin/lock
@@ -232,7 +234,6 @@
 !/sbin/run-fetchmail
 !/sbin/sendback.pl
 !/sbin/unmime
-!/.screenrc
 !/.signature
 !/tmp
 !/var
