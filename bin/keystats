@@ -1,0 +1,39 @@
+#!/bin/zsh
+
+infile=${1:-/usr/share/keyrings/debian-keyring.gpg}
+tempfile=$(mktemp)
+trap 'rm ${tempfile}' EXIT
+
+hokey lint --output-format JSON <${infile} >${tempfile}
+
+print -n "Total primary keys: "
+wc -l <${tempfile} # jq '.keyFingerprint' ${tempfile} | wc -l
+
+print "Key versions: "
+jq '.keyVer.val' ${tempfile} | sort | uniq -c
+
+print "Primary key pubkey algorithms: "
+jq '.keyAlgorithmAndSize.pubkeyalgo.val' ${tempfile} | sort | uniq -c
+
+print "Primary key pubkey sizes: "
+jq '.keyAlgorithmAndSize.pubkeysize.val' ${tempfile} | sort -n | uniq -c
+
+print "Judgment on preferred hash algorithms of \"best\" uid/uat: "
+jq '.keyBestOf.uidPreferredHashAlgorithms | .[].explanation' ${tempfile} | sort | uniq -c
+
+print "Judgment on expiration times of \"best\" uid/uat: "
+jq '.keyBestOf.uidKeyExpirationTimes | .[].explanation' ${tempfile} | sort | uniq -c
+
+print -n "Total number of UIDs + UAts: "
+jq '.keyUIDsAndUAts | keys | .[]' ${tempfile} | wc -l
+
+print "Hash algorithm used for most recent self-sig: "
+jq '.keyUIDsAndUAts | .[].val.uidSelfSigHashAlgorithms | .[].val' ${tempfile} | sort | uniq -c
+
+print "Judgment on preferred hash algorithms: "
+jq '.keyUIDsAndUAts | .[].val.uidSelfSigHashAlgorithms | .[].explanation' ${tempfile} | sort | uniq -c
+
+print "Judgment on expiration times: "
+jq '.keyUIDsAndUAts | .[].val.uidKeyExpirationTimes | .[].explanation' ${tempfile} | sort | uniq -c
+
+print "=========================================="
