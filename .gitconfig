@@ -39,7 +39,7 @@
         command = ssh
         options = -t
         options = 192.168.122.45
-        options = bin/remote_build
+        options = /usr/local/bin/remote_build
         options = PACKAGE_NAME_HERE
         # command = pdebuild
         # options = --auto-debsign
