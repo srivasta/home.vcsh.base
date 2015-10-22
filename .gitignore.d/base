@@ -105,6 +105,7 @@
 !/bin/scan_packages
 !/bin/sendtc
 !/bin/set-pkgs
+!/bin/shout
 !/bin/show-open-ports
 !/bin/sigtrace
 !/bin/ssh_attach.sh
