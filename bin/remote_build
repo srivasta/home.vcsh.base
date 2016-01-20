@@ -1,4 +1,3 @@
-0
 #! /bin/bash
 #                               -*- Mode: Sh -*-
 # remote_build ---
@@ -15,7 +14,7 @@
 #
 #
 
-progname="$(basename \"$0\")"
+progname=$(basename "$0")
 set -e
 
 ######################################################################
@@ -47,12 +46,8 @@ export LANG=C
 export LC_ALL=C
 export PATH=$HOME/sbin:$HOME/bin:/usr/local/bin:/bin:/usr/bin:/sbin:/usr/sbin
 
-
-
-curdir=$(pwd)
-
 withecho () {
-    echo " $@" >&2
+    echo "$@" >&2
     "$@"
 }
 action='withecho'
@@ -84,7 +79,7 @@ eval set -- "$TEMP"
 while true ; do
     case "$1" in
         -h|--help) usageversion; exit 0   ; shift   ;;
-        -n)      action='echo';docmd='NO' ; shift   ;;
+        -n)      action='echo'            ; shift   ;;
         -p)      opt_pkg="$2"             ; shift 2 ;;
         -v)      VERBOSE=1                ; shift   ;;
         --)      shift ; break ;;
@@ -107,7 +102,7 @@ fi
 test -n "$pkg" || echo >&2 No package name provided
 test -n "$pkg" || exit 1
 
-if which satisfydeps 2>&1 >/dev/null; then
+if which satisfydeps >/dev/null 2>&1; then
     test -n "$VERBOSE" || echo >&2 'Good, have a satisfydeps file'
 else
     echo >&2 Could not file satisfydeps file
@@ -118,10 +113,10 @@ fi
 # Mount the hostdir
 test -n "$VERBOSE" || echo >&2 'Mount the host dir'
 #test -d $mount_point/input || $action sudo mount $mount_point
-mountpoint -q $workdir_top || \
-    sudo mount -t 9p -o trans=virtio,version=9p2000.L,ro  $workdir_top $workdir_top
+mountpoint -q "$workdir_top" || \
+    sudo mount -t 9p -o trans=virtio,version=9p2000.L,ro  "$workdir_top" "$workdir_top"
 mountpoint -q $results_dir || \
-    sudo mount -t 9p -o trans=virtio,version=9p2000.L,rw  $results_dir $results_dir
+    sudo mount -t 9p -o trans=virtio,version=9p2000.L,rw  "$results_dir" "$results_dir"
 
 
 if [[ ! -d "$workdir_top/$pkg" ]]; then
@@ -131,23 +126,21 @@ fi
 
 if [[ ! -d "$staging_dir" ]]; then
     echo >&2 No staging directory found "$staging_dir"
-    mkdir -p $staging_dir
+    mkdir -p "$staging_dir"
 fi
-
-
 
 test -n "$VERBOSE" || echo >&2 'calculate version numbers'
 
-cd $workdir_top/$pkg
+cd "$workdir_top/$pkg"
 
 changelog=$(find $pkg* -wholename '*/debian/changelog')
-debdir=$(dirname $changelog)
-topdir=$(dirname $debdir)
+#debdir=$(dirname "$changelog")
+#topdir=$(dirname "$debdir")
 
-version=$(LC_ALL=C dpkg-parsechangelog -l$changelog | sed -ne 's/^Version: //p' )
+version=$(LC_ALL=C dpkg-parsechangelog -l"$changelog" | sed -ne 's/^Version: //p' )
 non_epoch_version=$(echo -n "$version" | LC_ALL=C perl -pe 's/^\d+://')
 upstream_version=$(echo -n "$non_epoch_version" | sed  -e 's/-[^-]*$//')
-debian_version=$(echo -n $non_epoch_version | LC_ALL=C   perl -nle 'm/-([^-]*)$/ && print $1')
+debian_version=$(echo -n "$non_epoch_version" | LC_ALL=C   perl -nle 'm/-([^-]*)$/ && print $1')
 
 host_arch=$(dpkg-architecture -qDEB_HOST_ARCH)
 log_file_name=${pkg}_${non_epoch_version}_${host_arch}.build
@@ -164,18 +157,18 @@ if [ -n "$debian_version"  ]; then
     if [ -d "$pkg"  ]; then
         echo >&2 We have an unversioned source dir, and yet a debian version
         echo >&2 "[ $debian_version ]"
-        echo >&2 "This is confusing, but trying to continue"
+         echo >&2 "This is confusing, but trying to continue"
         $action mv "$pkg" "$pkg-$upstream_version"
     fi
     if [[ -d "$staging_dir/$pkg-$upstream_version" ]]; then
-        echo >&2 The distrination directory $staging_dir/$pkg already exists
+        echo >&2 The distrination directory "$staging_dir/$pkg" already exists
         echo >&2 removing "$staging_dir/$pkg-$upstream_version"
         $action rm -fr "$staging_dir/$pkg-$upstream_version"
     fi
-    $action cp -a "$pkg-$upstream_version" $staging_dir
+    $action cp -a "$pkg-$upstream_version" "$staging_dir"
     if [[ -n "$upstream_tarball" ]] &&  [[ -e "$upstream_tarball" ]]; then
         echo >&2 "Exporting upstream sources to $staging_dir ."
-        $action cp -pf $upstream_tarball $staging_dir
+        $action cp -pf "$upstream_tarball" "$staging_dir"
     else
         echo >&2 Could not find upstream source
         exit 7
@@ -187,42 +180,42 @@ else
         $action mv "$pkg-$upstream_version" "$pkg"
     fi
     # Get ready to copy the source dir over,
-    if [[ -d $staging_dir/$pkg-$upstream_version ]]; then
-        echo >&2 The distrination directory $staging_dir/$pkg-$upstream_version already exists
-        echo >&2 removing $staging_dir/$pkg-$upstream_version
-        $action rm -r $staging_dir/$pkg-$upstream_version
+    if [[ -d "$staging_dir/$pkg-$upstream_version" ]]; then
+        echo >&2 The distrination directory "$staging_dir/$pkg-$upstream_version" already exists
+        echo >&2 removing "$staging_dir/$pkg-$upstream_version"
+        $action rm -r "$staging_dir/$pkg-$upstream_version"
     fi
 
-    $action cp -a $pkg $staging_dir/$pkg-$upstream_version
+    $action cp -a "$pkg $staging_dir/$pkg-$upstream_version"
 fi
 
 # Clean up the git stuff
 test -n "$VERBOSE" || echo >&2 'Clean up the git stuff'
-$action find  $staging_dir/$pkg-$upstream_version                                      \
+$action find  "$staging_dir/$pkg-$upstream_version"                                      \
         -depth \( \( -type f -a -name .gitmodules \) -o \( -type d -a -name .git \) \) \
                           -exec rm -rf {} \;
 
 
 # Install the build dependencies
 test -n "$VERBOSE" || echo >&2 'Install the build dependencies'
-$action sudo aptitude -fy install --without-recommends   \
-    $($action satisfydeps $staging_dir/$pkg-$upstream_version/debian/control)
+$action sudo apt-get install --no-install-recommends -fy    \
+    $($action satisfydeps "$staging_dir/$pkg-$upstream_version/debian/control")
 
 
 # Build
 test -n "$VERBOSE" || echo >&2 'Build the package'
-cd $staging_dir/$pkg-$upstream_version
-$action dpkg-buildpackage -i'(?:^|/).*~$|(?:^|/)\.#.*$|(?:^|/)\..*\.swp$|(?:^|/),,.*(?:$|/.*$)|(?:^|/)(?:DEADJOE|\.cvsignore|\.arch-inventory|\.bzrignore|\.gitignore)$|(?:^|/)(?:CVS|RCS|\.deps|\{arch\}|\.arch-ids|\.svn|\.hg|_darcs|\.git|.gitmodules|\.shelf|_MTN|\.bzr(?:\.backup|tags)?)(?:$|/.*$)' -D -rfakeroot 2>&1 | tee $staging_dir/${log_file_name}
+cd "$staging_dir/$pkg-$upstream_version"
+$action dpkg-buildpackage -i'(?:^|/).*~$|(?:^|/)\.#.*$|(?:^|/)\..*\.swp$|(?:^|/),,.*(?:$|/.*$)|(?:^|/)(?:DEADJOE|\.cvsignore|\.arch-inventory|\.bzrignore|\.gitignore)$|(?:^|/)(?:CVS|RCS|\.deps|\{arch\}|\.arch-ids|\.svn|\.hg|_darcs|\.git|.gitmodules|\.shelf|_MTN|\.bzr(?:\.backup|tags)?)(?:$|/.*$)' -D -rfakeroot 2>&1 | tee "$staging_dir/${log_file_name}"
 
 # Build a second time
 test -n "$VERBOSE" || echo >&2 'Build the package a second time'
-$action dpkg-buildpackage -i'(?:^|/).*~$|(?:^|/)\.#.*$|(?:^|/)\..*\.swp$|(?:^|/),,.*(?:$|/.*$)|(?:^|/)(?:DEADJOE|\.cvsignore|\.arch-inventory|\.bzrignore|\.gitignore)$|(?:^|/)(?:CVS|RCS|\.deps|\{arch\}|\.arch-ids|\.svn|\.hg|_darcs|\.git|.gitmodules|\.shelf|_MTN|\.bzr(?:\.backup|tags)?)(?:$|/.*$)' -D -rfakeroot 2>&1 | tee -a $staging_dir/${log_file_name}
+$action dpkg-buildpackage -i'(?:^|/).*~$|(?:^|/)\.#.*$|(?:^|/)\..*\.swp$|(?:^|/),,.*(?:$|/.*$)|(?:^|/)(?:DEADJOE|\.cvsignore|\.arch-inventory|\.bzrignore|\.gitignore)$|(?:^|/)(?:CVS|RCS|\.deps|\{arch\}|\.arch-ids|\.svn|\.hg|_darcs|\.git|.gitmodules|\.shelf|_MTN|\.bzr(?:\.backup|tags)?)(?:$|/.*$)' -D -rfakeroot 2>&1 | tee -a "$staging_dir/${log_file_name}"
 
 # Last sanity check
 test -n "$VERBOSE" || echo >&2 'Verify the integrity of the original sources'
 if [ -n "$debian_version" ]; then
-    if ! cmp $workdir_top/$pkg/${pkg}_${upstream_version}.orig.tar.gz \
-           $staging_dir/${pkg}_${upstream_version}.orig.tar.gz ; then
+    if ! cmp "$workdir_top/$pkg/${pkg}_${upstream_version}.orig.tar.gz" \
+           "$staging_dir/${pkg}_${upstream_version}.orig.tar.gz" ; then
         echo >&2 Upstream sources corrupted
         exit 9
     fi
@@ -231,17 +224,23 @@ fi
 
 # Copy the results
 test -n "$VERBOSE" || echo >&2 'Copy the results'
-cd $staging_dir
+cd "$staging_dir"
 if [[ ! -d "$results_dir/$pkg" ]]; then
-    $action mkdir -p $results_dir/$pkg
+    $action mkdir -p "$results_dir/$pkg"
+    $action chmod 755 "$results_dir/$pkg"
 fi
-for i in *; do
-    if [ -f $i ]; then
-        $action cp $i $results_dir/$pkg/
-    fi
-done
+if [ -d "$results_dir/$pkg" ]; then
+    for i in *; do
+        if [ -f "$i" ]; then
+            $action cp "$i" "$results_dir/$pkg/"
+        fi
+    done
+    cd ..
+    rm -rf "$staging_dir" || true
+else
+    echo >&2 Could not create results dir
+fi
 
-rm -rf $staging_dir || true
 test -n "$VERBOSE" || echo >&2 'All done'
 
 exit 0

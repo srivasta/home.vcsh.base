@@ -28,14 +28,16 @@
 [gitpkg]
         deb-dir = /scratch/sandbox/staging/input
         prebuild-target = clean
-        #pre-export-hook = /usr/share/gitpkg/hooks/pristine-tar-pre-export-hook
+	#pre-export-hook = /usr/share/gitpkg/hooks/pristine-tar-pre-export-hook
+	pre-export-hook = /home/srivasta/bin/gitpkg-pre-commit
         exit-hook = /home/srivasta/bin/gitpkg-build
         create-fake-orig = false
         force-overwrite-orig = false
 
 [gitpkg-build]
         results-dir = /scratch/sandbox/staging/results
-        debarchive = /backup/debarchive
+	debarchive = /backup/debarchive
+        no-sign = 1
         command = ssh
         options = -t
         options = 192.168.122.45

@@ -66,6 +66,10 @@ if [ -z "$BUILD_CMD" ]; then
     exit 1
 fi
 
+if [ "$(repo_config --get --bool gitpkg-build.no-sign)" == "true" ]; then
+    NOSIGN=Yes
+fi
+
 ARCHITECTURE=$(dpkg-architecture -qDEB_BUILD_ARCH)
 MLINT="lintian -L '>=normal' -L '+>=wishlist/possible' -L '+pedantic/certain' --info --show-overrides --color=auto"
 LINT="lintian -L '>=normal' -L '+>=wishlist/possible' -L '+pedantic/certain' "
@@ -105,11 +109,13 @@ if [ -n "$RESULTS_DIR" ] && [ -d "$RESULTS_DIR/${DEB_SOURCE}" ]; then
         cd "$RESULTS_DIR/${DEB_SOURCE}"
         CHANGES=$(ls -1 "${DEB_SOURCE}"_* | grep ${ARCHITECTURE}.changes | sort | tail -n 1)
         if [ -f "$CHANGES" ]; then
+            echo >&2 Running lintian
             if $LINT "$CHANGES" >&/dev/null; then
                 if [ $? -gt 1 ]; then
                     echo "FATAL error running lintian"
                     exit 254
                 fi
+                echo "$MLINT $CHANGES"
                 $MLINT "$CHANGES"
                 NOSIGN=YES
             fi
@@ -131,5 +137,5 @@ if [ -n "$RESULTS_DIR" ] && [ -d "$RESULTS_DIR/${DEB_SOURCE}" ]; then
         fi
     )
 fi
-
+echo dgit push --build-products-dir="$RESULTS_DIR/${DEB_SOURCE}"
 exit 0
