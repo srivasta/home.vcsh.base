@@ -1,0 +1,193 @@
+# This configuration file gives defaults for the scripts in
+# the devscripts package, as documented in the individual manpages.
+# Variables defined here may be overridden by a per-user ~/.devscripts
+# configuration file, which has exactly the same syntax as this file.
+#
+# This file is sourced by /bin/bash, and should only contain
+# comment lines (beginning with a '#'), and lines of the form
+# VARIABLE=value
+# The value must be quoted if there are spaces in it.
+# Variables corresponding to switches (on/off; yes/no) must take
+# one of the values 'yes' or 'no'.
+# The variable names are all of the form PROGNAME_VARNAME,
+# or DEVSCRIPTS_VARNAME if they are more generally applicable.
+#
+# As new variables are introduced into the devscripts program, their
+# descriptions and default values will be appended as comments
+# to this file.
+
+# Variables recognised as of devscripts version 2.11.0:
+
+##### bts
+#
+
+# Specify a list of e-mail addresses to which a carbon copy of the
+# generated e-mail to the control bot should automatically be sent.
+BTS_DEFAULT_CC=srivasta@debian.org
+
+##### debchange/dch
+
+# Select a heuristic to use to determine whether the package has released.
+# The default changelog heuristic assumes the package has been
+# released unless its changelog contains UNRELEASED in the
+# distribution field. If this heuristic is enabled then the
+# distribution will default to UNRELEASED in new changelog entries
+# DEBCHANGE_RELEASE_HEURISTIC=log
+DEBCHANGE_RELEASE_HEURISTIC=changelog
+
+##### debclean
+#
+# Remove .deb, .changes, .dsc and .upload files?
+DEBCLEAN_CLEANDEBS=yes
+
+##### debcommit
+#
+# Sign created tags using gnupg?
+DEBCOMMIT_SIGN_TAGS=yes
+#
+# Take any uncommitted changes in the changelog in
+# to account when determining the commit message
+# for a release?
+# DEBCOMMIT_RELEASE_USE_CHANGELOG=no
+
+##### debdiff
+
+# Show directory names which appear in the filelist?
+DEBDIFF_DIRS=yes
+#
+# Which control files to compare?  A comma-separated list, with
+# possibilities such as postinst, config and so on; ALL means compare
+# all control files.
+DEBDIFF_CONTROLFILES=ALL
+#
+# Show files which have moved between .debs?
+DEBDIFF_SHOW_MOVED=yes
+
+# Include the output of diffstat?
+DEBDIFF_SHOW_DIFFSTAT=yes
+#
+# Compare control files in source packages using wdiff?
+DEBDIFF_WDIFF_SOURCE_CONTROL=yes
+#
+# Always compare package in version order, rather than the order specified
+# on the command line?
+# DEBDIFF_AUTO_VER_SORT=no
+
+##### debrelease
+#
+# This specifies which uploader program to use.  As of devscripts 2.11.0
+# the recognised values are "dupload" (default) and "dput".  Check the
+# debrelease(1) manpage for any recent changes to this variable
+DEBRELEASE_UPLOADER=dupload
+#
+# This specifies the directory, relative to the top of the source
+# tree, in which the .changes and .debs files are to be found.  Note
+# that this also affects debc and debi.
+#DEBRELEASE_DEBS_DIR=/scratch/sandbox/result
+
+##### debsign
+#
+# debsign recognises the DEBRELEASE_DEBS_DIR variable; see debrelease
+# above for more information.
+#
+# GPG keyid to use (-k option)
+DEBSIGN_KEYID=0xC5779A1C
+DEBSIGN_PROGRAM=/usr/bin/gpg2
+
+##### debuild
+#
+# Do we preserve the whole environment except for PATH?
+# DEBUILD_PRESERVE_ENV=no
+#
+# Are there any environment variables we should preserve?  This should
+# be a comma-separated list.
+# DEBUILD_PRESERVE_ENVVARS=""
+#
+# How to set a preserved environment variable, in this case to set
+# FOO=bar.
+# DEBUILD_SET_ENVVAR_FOO=bar
+#
+# Extra options given to dpkg-buildpackage before any command-line
+# options specified.  Single options containing spaces should be
+# quoted, for example "-m'Julian Gilbey <jdg@debian.org>' -us -uc"
+# If this contains a -r, -d or -D option, this will also be recognised
+# when running debuild binary|binary-arch|...
+# DEBUILD_DPKG_BUILDPACKAGE_OPTS=""
+#
+# Do we run lintian at the end of a full run?
+DEBUILD_LINTIAN=yes
+#
+# Extra options given to lintian before any command-line options
+# specified.
+DEBUILD_LINTIAN_OPTS="--display-info --pedantic --info --show-overrides --color=auto "
+#
+# Colon-separated list of options to be added to the beginning
+# of PATH once it has been sanitised
+DEBUILD_PREPEND_PATH="/usr/lib/ccache"
+#
+# Credentials to pass to debrsign when signing dsc / changes files
+# Setting this option to a non-blank string implies using debrsign
+# DEBUILD_SIGNING_USERNAME="user@host"
+#
+# Hooks; see the manpage for details of these
+# DEBUILD_DPKG_BUILDPACKAGE_HOOK=""
+# DEBUILD_CLEAN_HOOK=""
+# DEBUILD_DPKG_SOURCE_HOOK=""
+# DEBUILD_BUILD_HOOK=""
+# DEBUILD_BINARY_HOOK=""
+# DEBUILD_FINAL_CLEAN_HOOK=""
+# DEBUILD_LINTIAN_HOOK=""
+# DEBUILD_SIGNING_HOOK=""
+# DEBUILD_POST_DPKG_BUILDPACKAGE_HOOK=""
+
+##### dpkg-sig
+#
+# dpkg-sig is not a part of devscripts, but shares this configuration file.
+# It pays attention to the values of DEBSIGN_MAINT and DEBSIGN_KEY in
+# addition to the following.
+#
+# This key ID takes precedence over the rest
+# DPKGSIG_KEYID=
+#
+# Do we sign the .changes and .dsc files?  See the manpage for more
+# info.  Valid options are no, auto, yes, full and force_full.
+# DPKGSIG_SIGN_CHANGES=auto
+#
+# Do we cache the gpg passphrase by default?  This can be dangerous!
+# DPKGSIG_CACHE_PASS=no
+
+##### licensecheck
+#
+# Print the file header being parsed before the corresponding license
+# information?
+LICENSECHECK_VERBOSE=yes
+#
+# How many lines of each file should be parsed for license information?
+# LICENSECHECK_PARSELINES=60
+
+##### uscan
+#
+# Should we create a symlink from the downloaded tar.gz file to
+# pkg_version.orig.tar.gz, rename it like this or do nothing?
+# Options are 'symlink'/'yes', 'rename' or 'no'
+USCAN_SYMLINK=rename
+
+# Should we give verbose output?
+USCAN_VERBOSE=yes
+#
+# Where should downloaded files be placed?
+# USCAN_DESTDIR=..
+#
+# Automatically repack bzipped tar or zip archives to gzipped tars?
+USCAN_REPACK=yes
+
+##### uupdate
+#
+# Should we symlink the .orig.tar.gz file to its new name or
+# copy it instead?  yes=symlink, no=copy
+UUPDATE_SYMLINK_ORIG=no
+
+##### who-uploads
+#
+# Display the date of the upload?
+WHOUPLOADS_DATE=yes

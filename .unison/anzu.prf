@@ -1,0 +1,13 @@
+addprefsto = anzu.new
+log = true
+times = true
+diff = diff -u -W 79
+
+root = /home/srivasta
+root = ssh://anzu//home/srivasta
+
+# include common definitions
+include common
+
+include anzu.new
+

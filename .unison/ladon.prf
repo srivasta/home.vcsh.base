@@ -1,0 +1,18 @@
+addprefsto = ladon.new
+log = true
+times = true
+diff = diff -u -W 79
+merge2 = emacs -q --eval '(ediff-merge-files "CURRENT1" "CURRENT2" nil "NEW")'
+merge = emacs -q --eval '(ediff-merge-files-with-ancestor "CURRENT1" "CURRENT2" "OLD" nil "NEW")'
+
+
+root = /home/ftp/incoming/weblog
+root = ssh://ladon.golden-gryphon.com//home/ftp/incoming/weblog
+
+# include common definitions
+include common
+
+include ladon.new
+
+
+

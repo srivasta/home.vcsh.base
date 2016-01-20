@@ -1,0 +1,53 @@
+# this is your configuration file for pbuilder.
+# the file in /usr/share/pbuilder/pbuilderrc is the default template.
+# /etc/pbuilderrc is the one meant for editing.
+#
+# read pbuilderrc.5 document for notes on specific options.
+
+
+MIRRORSITE=http://http.debian.net/debian
+#MIRRORSITE=http://http.us.debian.org/debian
+#MIRRORSITE=http://mirror.peer1.net/debian/
+#MIRRORSITE=http://192.168.0.21:3142/mirror.peer1.net/debian/
+#MIRRORSITE=http://192.168.0.21:3142/mirror.peer1.net/debian/
+
+#OTHERMIRROR="deb http://mirrors.kernel.org/debian/  unstable main contrib non-free"
+#OTHERMIRROR="deb ftp://debian.osuosl.org/debian/ unstable main contrib non-free"
+OTHERMIRROR="deb http://http.us.debian.org/debian sid main contrib non-free"
+#OTHERMIRROR="deb http://www.home.com/updates/ ./"
+#OTHERMIRROR="deb http://mirrors.kernel.org/debian/ unstable main"
+
+#export http_proxy=http://your-proxy:8080/
+http_proxy=http://localhost:3128/
+
+#BUILDPLACE=/var/cache/pbuilder/build/
+BUILDPLACE=/scratch/sandbox/build/
+
+#BUILDRESULT=/var/cache/pbuilder/result/
+BUILDRESULT=/scratch/sandbox/result
+
+#specify the cache for APT
+APTCACHE="/scratch/sandbox/aptcache/"
+#APTCACHE="/var/cache/pbuilder/aptcache/"
+# cowbuilder base
+BASEPATH=/scratch/sandbox/base-amd64.qemu
+# archived chroot image location
+BASETGZ=/scratch/sandbox/base.tgz
+
+DEBEMAIL="Manoj Srivastava <srivasta@debian.org>"
+
+# SHELL variable is used inside pbuilder by commands like 'su'; and
+# they need sane values
+export SHELL=/bin/bash
+
+# default file extension for pkgname-logfile
+PKGNAME_LOGFILE_EXTENTION="_$(dpkg --print-architecture).build"
+
+AUTO_DEBSIGN=no
+
+#  kvm -nodefaults -nographic -M pc -m 256 -kernel /boot/vmlinuz-3.2.0-4-amd64 -initrd /boot/initrd.img-3.2.0-4-amd64 -drive file=/scratch/sandbox/base-amd64.qemu,index=0,media=disk,cache=writeback -drive file=/scratch/sandbox/build//qemu.25773.dev,index=1,media=disk,cache=writeback -append root=/dev/sda quiet init=/pbuilder-run console=ttyS0,115200n8 -serial stdio -net user -net nic
+KERNEL_IMAGE=/vmlinuz
+INITRD=/initrd.img
+ARCHITECTURE=amd64
+#  memory size to use in qemu session, in MB.
+MEMORY_MEGS=256

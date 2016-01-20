@@ -1,0 +1,13 @@
+addprefsto = glaurung.new
+log = true
+times = true
+diff = diff -u -W 79
+
+root = /home/srivasta
+root = ssh://glaurung//home/srivasta
+
+# include common definitions
+include common
+
+include glaurung.new
+

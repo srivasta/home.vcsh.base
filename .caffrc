@@ -1,0 +1,136 @@
+# .caffrc -- vim:ft=perl:
+# This file is in perl(1) format - see caff(1) for details.
+
+$CONFIG{'owner'} = 'Manoj Srivastava';
+$CONFIG{'email'} = 'srivasta@golden-gryphon.com';
+#$CONFIG{'reply-to'} = 'foo@bla.org';
+
+
+$CONFIG{'gpg-sign-args'} = 'save';
+
+
+# You can get your long keyid from
+#   gpg --with-colons --list-key <yourkeyid|name|emailaddress..>
+#
+# If you have a v4 key, it will simply be the last 16 digits of
+# your fingerprint.
+#
+# Example:
+#   $CONFIG{'keyid'} = [ qw{FEDCBA9876543210} ];
+#  or, if you have more than one key:
+#   $CONFIG{'keyid'} = [ qw{0123456789ABCDEF 89ABCDEF76543210} ];
+$CONFIG{'keyid'} = [ qw{CF489438C5779A1C} ];
+$CONFIG{'also-encrypt-to'} = 'CF489438C5779A1C';
+
+# Select this/these keys to sign with
+$CONFIG{'local-user'} = [ qw{CF489438C5779A1C} ];
+
+# Additionally encrypt messages for these keyids
+$CONFIG{'also-encrypt-to'} = [ qw{CF489438C5779A1C} ];
+
+$CONFIG{'caffhome'}    = $ENV{'HOME'}.'/.caff';
+
+# The options below need not be changed for normal operation.
+
+# Paths to GnuPG binaries:
+# $CONFIG{'gpg'}           = 'gpg2';
+# $CONFIG{'gpg-sign'}      = $CONFIG{'gpg'};
+# $CONFIG{'gpg-delsig'}    = '/home/weasel/tmp/gpg/gnupg-1.3.92/g10/gpg';
+
+$CONFIG{'mail'}           = 'yes';
+# $CONFIG{'secret-keyring'} = '/tmp/gpg/secring.gpg';
+
+# Don't export UIDs by default, on which your latest signature is older than this age.
+# $CONFIG{'export-sig-age'} = 24*60*60;
+
+# Keyserver to download keys from. Default: pool.sks-keyservers.net.
+# $CONFIG{'keyserver'}      = 'pgp.surfnet.nl';
+
+# Boolean options, all default to false (0).
+#
+# Skip fetching the keys from the keyserver.
+# $CONFIG{'no-download'}    = 1;
+# Skip signing the keys.
+# $CONFIG{'no-sign'}        = 1;
+# Ask to continue before starting the signing (for offline signing).
+# $CONFIG{'ask-sign'}       = 1;
+
+
+
+# Mail template to use for the encrypted part
+$CONFIG{'mail-template'} = << 'EOM';
+Hi,
+
+please find attached the user id{(scalar @uids >= 2 ? 's' : '')}
+{foreach $uid (@uids) {
+    $OUT .= "\t".$uid."\n";
+};}of your key {$key} signed by my key (see below for details).
+
+If you have multiple user ids, I sent the signature for each user id
+separately to that user id's associated email address. You can import
+the signatures by running each through `gpg --import`.
+
+Key properties
+===============
+
+     pub   4096R/C5779A1C 2009-05-11
+       Key fingerprint = E37E 5EC5 2A01 DA25 AD20  05B6 CF48 9438 C577 9A1C
+     uid       Manoj Srivastava <srivasta@computer.org>
+     uid       Manoj Srivastava <srivasta@golden-gryphon.com>
+     uid       Manoj Srivastava <srivasta@debian.org>
+     uid       Manoj Srivastava <srivasta@acm.org>
+     uid       Manoj Srivastava <srivasta@ieee.org>
+     uid       [jpeg image of size 16612]
+
+Certification policies
+=======================
+
+Key certifications made by this key later than 21st August, 2009 are
+only considered valid if they contain a policy URL of the form
+ [http://www.golden-gryphon.com/download/]<name>.<date>.txt?version=<v>&sha256sum=<m>
+pointing to a valid policy document.
+        <name> is the name of the policy
+        <date> is the date the policy was issued
+        <v> is the revision number of the policy
+        <m> is the SHA256 hash of the policy document.
+
+A valid policy document has to be signed by the primary key
+(fingerprint shown above), the signature contains a policy URL
+(without the hash, since that would not yet be available), pointing to
+this document. The signature shall have no other meaning than that
+defined in the policy document.
+
+Assertions implied by certification
+- ------------------------------------
+
+1. I was presented with the key fingerprint of the key being signed
+   directly in person, or through a trusted channel. The fingerprint
+   of the key was matched with the finger print of the key being
+   signed.
+2. I have determined the identity of the person presenting the key to
+   be signed through a legal identity document containing a
+   photograph.  The document was of a kind familiar to me, and did not
+   display any discernible signs of tampering. Travel document (eg,
+   passports, etc) are preferred, private identification cards are not
+   supported.
+3. The user id's on the key that match the identity document are the
+   ones signed. In case of a photo UID, the photograph has to be that
+   of the person presenting the key to be signed
+4. In case of user ID's containing an email, the owner of the key
+   being signed has to demonstrate control over the email address on
+   the ID (by reading this, you are demonstrating that fact).
+5. In either case, the person owning the key to be signed has to
+   demonstrate control over the private key of the key being signed
+   before being able to use the signature (as you have, since you
+   could decrypt this message)
+
+Note that I did not upload your key to any keyservers. If you want this
+new signature to be available to others, please upload it yourself.
+With GnuPG this can be done using
+	gpg --keyserver pool.sks-keyservers.net --send-key {$key}
+
+If you have any questions, don't hesitate to ask.
+
+Regards,
+{$owner}
+EOM
