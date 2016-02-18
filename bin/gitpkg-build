@@ -47,6 +47,11 @@
 #        repo-config-helper documented below.  Be careful if you do
 #        use it for much else.
 
+withecho () {
+        echo " $@" >&2
+        "$@"
+}
+action='withecho'
 
 # We're out of the repo tree, but want to check git-config
 . /usr/share/gitpkg/hooks/repo-config-helper
@@ -106,10 +111,13 @@ fi
 
 if [ -n "$RESULTS_DIR" ] && [ -d "$RESULTS_DIR/${DEB_SOURCE}" ]; then
     (
-        cd "$RESULTS_DIR/${DEB_SOURCE}"
+        $action sudo chmod 0775 "$RESULTS_DIR/${DEB_SOURCE}"
+        $action cd "$RESULTS_DIR/${DEB_SOURCE}"
+        $action sudo chmod 0644 *
         CHANGES=$(ls -1 "${DEB_SOURCE}"_* | grep ${ARCHITECTURE}.changes | sort | tail -n 1)
         if [ -f "$CHANGES" ]; then
             echo >&2 Running lintian
+            echo >&2 $LINT "$CHANGES"
             if $LINT "$CHANGES" >&/dev/null; then
                 if [ $? -gt 1 ]; then
                     echo "FATAL error running lintian"
@@ -120,7 +128,7 @@ if [ -n "$RESULTS_DIR" ] && [ -d "$RESULTS_DIR/${DEB_SOURCE}" ]; then
                 NOSIGN=YES
             fi
             if [ -f "$OLD_CHANGES" ]; then
-                debdiff -q --diffstat --show-moved --controlfiles ALL --dirs -w "$OLD_CHANGES" "$CHANGES"
+                $action debdiff -q --diffstat --show-moved --controlfiles ALL --dirs -w "$OLD_CHANGES" "$CHANGES"
                 if [ $? -gt 2 ]; then
                     echo "FATAL error running debdiff"
                     exit 255
@@ -129,7 +137,7 @@ if [ -n "$RESULTS_DIR" ] && [ -d "$RESULTS_DIR/${DEB_SOURCE}" ]; then
                 echo "No Old changes file found for ${DEB_SOURCE} ${ARCHITECTURE}"
             fi
             if [ -z "$NOSIGN" ]; then
-                debsign "$CHANGES"
+                $action debsign "$CHANGES"
             fi
 
         else
@@ -137,5 +145,6 @@ if [ -n "$RESULTS_DIR" ] && [ -d "$RESULTS_DIR/${DEB_SOURCE}" ]; then
         fi
     )
 fi
+echo dpkg -i "$RESULTS_DIR/${DEB_SOURCE}/*.deb"
 echo dgit push --build-products-dir="$RESULTS_DIR/${DEB_SOURCE}"
 exit 0

@@ -8,6 +8,12 @@
         renamelimit = 200
         mnemonicprefix = true
 
+[diff "lisp"]
+      xfuncname = "^(\\(.*)$"
+
+[diff "texinfo"]
+      xfuncname = "^@node[ \t][ \t]*\\([^,][^,]*\\)"
+
 [merge]
 	tool = ediff
 
@@ -18,10 +24,28 @@
 [mergetool]
 	prompt = false
 
+[merge "dpkg-mergechangelogs"]
+        name = debian/changelog merge driver
+        driver = dpkg-mergechangelogs -m %O %A %B %A
+
+[merge "merge-changelog"]
+      name = GNU-style ChangeLog merge driver
+	driver = /usr/local/bin/git-merge-changelog %O %A %B
+
+[commit]
+	gpgsign = true
 [push]
         default = upstream
 [core]
         excludesfile = /home/srivasta/etc/global-gitignore
+
+[transfer]
+        fsckObjects = true
+[fetch]
+        fsckObjects = true
+[receive]
+        fsckObjects = true
+
 #[init]
 #       templatedir = $XDG_CONFIG_HOME/git_templates
 

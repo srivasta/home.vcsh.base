@@ -87,7 +87,7 @@ while true ; do
             usageversion; exit 1           ;;
     esac
 done
-
+umask 0022
 test -n "$VERBOSE" || echo >&2 'Sanity Checking'
 
 if [[ -n "$opt_pkg" ]]; then
@@ -137,7 +137,7 @@ changelog=$(find $pkg* -wholename '*/debian/changelog')
 #debdir=$(dirname "$changelog")
 #topdir=$(dirname "$debdir")
 
-version=$(LC_ALL=C dpkg-parsechangelog -l"$changelog" | sed -ne 's/^Version: //p' )
+version=$(LC_ALL=C dpkg-parsechangelog -l"$changelog" -S Version )
 non_epoch_version=$(echo -n "$version" | LC_ALL=C perl -pe 's/^\d+://')
 upstream_version=$(echo -n "$non_epoch_version" | sed  -e 's/-[^-]*$//')
 debian_version=$(echo -n "$non_epoch_version" | LC_ALL=C   perl -nle 'm/-([^-]*)$/ && print $1')
@@ -154,18 +154,21 @@ fi
 test -n "$VERBOSE" || echo >&2 'Copy source'
 
 if [ -n "$debian_version"  ]; then
+    source_dir="$pkg-$upstream_version"
     if [ -d "$pkg"  ]; then
         echo >&2 We have an unversioned source dir, and yet a debian version
         echo >&2 "[ $debian_version ]"
-         echo >&2 "This is confusing, but trying to continue"
-        $action mv "$pkg" "$pkg-$upstream_version"
+        echo >&2 "This is confusing, but trying to continue"
+        source_dir="$pkg"
     fi
-    if [[ -d "$staging_dir/$pkg-$upstream_version" ]]; then
-        echo >&2 The distrination directory "$staging_dir/$pkg" already exists
-        echo >&2 removing "$staging_dir/$pkg-$upstream_version"
-        $action rm -fr "$staging_dir/$pkg-$upstream_version"
+    if [[ -d "$staging_dir/$source_dir" ]]; then
+        echo >&2 The destination directory "$staging_dir/$source_dir" already exists
+        echo >&2 removing "$staging_dir/$source_dir"
+        $action rm -fr "$staging_dir/$source_dir"
     fi
-    $action cp -a "$pkg-$upstream_version" "$staging_dir"
+    echo cp -a "$source_dir" "$staging_dir"
+    cp -a "$source_dir" "$staging_dir"
+
     if [[ -n "$upstream_tarball" ]] &&  [[ -e "$upstream_tarball" ]]; then
         echo >&2 "Exporting upstream sources to $staging_dir ."
         $action cp -pf "$upstream_tarball" "$staging_dir"
@@ -174,24 +177,25 @@ if [ -n "$debian_version"  ]; then
         exit 7
     fi
 else
+    source_dir="$pkg"
     if [[ -z "$debian_version" ]]; then
         echo >&2 We have an versioned source dir, and yet no debian version
         echo >&2 This is confusing
-        $action mv "$pkg-$upstream_version" "$pkg"
+        source_dir="$pkg-$upstream_version"
     fi
     # Get ready to copy the source dir over,
-    if [[ -d "$staging_dir/$pkg-$upstream_version" ]]; then
-        echo >&2 The distrination directory "$staging_dir/$pkg-$upstream_version" already exists
-        echo >&2 removing "$staging_dir/$pkg-$upstream_version"
-        $action rm -r "$staging_dir/$pkg-$upstream_version"
+    if [[ -d "$staging_dir/$source_dir" ]]; then
+        echo >&2 The distrination directory "$staging_dir/$source_dir" already exists
+        echo >&2 removing "$staging_dir/$source_dir"
+        $action rm -r "$staging_dir/$source_dir"
     fi
 
-    $action cp -a "$pkg $staging_dir/$pkg-$upstream_version"
+    $action cp -a "$source_dir" "$staging_dir/"
 fi
 
 # Clean up the git stuff
 test -n "$VERBOSE" || echo >&2 'Clean up the git stuff'
-$action find  "$staging_dir/$pkg-$upstream_version"                                      \
+$action find  "$staging_dir/$source_dir"                                      \
         -depth \( \( -type f -a -name .gitmodules \) -o \( -type d -a -name .git \) \) \
                           -exec rm -rf {} \;
 
@@ -199,12 +203,12 @@ $action find  "$staging_dir/$pkg-$upstream_version"                             
 # Install the build dependencies
 test -n "$VERBOSE" || echo >&2 'Install the build dependencies'
 $action sudo apt-get install --no-install-recommends -fy    \
-    $($action satisfydeps "$staging_dir/$pkg-$upstream_version/debian/control")
+    $($action satisfydeps "$staging_dir/$source_dir/debian/control")
 
 
 # Build
 test -n "$VERBOSE" || echo >&2 'Build the package'
-cd "$staging_dir/$pkg-$upstream_version"
+cd "$staging_dir/$source_dir"
 $action dpkg-buildpackage -i'(?:^|/).*~$|(?:^|/)\.#.*$|(?:^|/)\..*\.swp$|(?:^|/),,.*(?:$|/.*$)|(?:^|/)(?:DEADJOE|\.cvsignore|\.arch-inventory|\.bzrignore|\.gitignore)$|(?:^|/)(?:CVS|RCS|\.deps|\{arch\}|\.arch-ids|\.svn|\.hg|_darcs|\.git|.gitmodules|\.shelf|_MTN|\.bzr(?:\.backup|tags)?)(?:$|/.*$)' -D -rfakeroot 2>&1 | tee "$staging_dir/${log_file_name}"
 
 # Build a second time
@@ -233,6 +237,7 @@ if [ -d "$results_dir/$pkg" ]; then
     for i in *; do
         if [ -f "$i" ]; then
             $action cp "$i" "$results_dir/$pkg/"
+            $action chmod 644 "$results_dir/$pkg/$i"
         fi
     done
     cd ..
