@@ -1,4 +1,4 @@
-set pastetoggle=<F4>
+" set pastetoggle=<F4>
 
 if has("syntax")
   syntax on                       " syntax highlighting on
