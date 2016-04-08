@@ -102,12 +102,12 @@ fi
 test -n "$pkg" || echo >&2 No package name provided
 test -n "$pkg" || exit 1
 
-if which satisfydeps >/dev/null 2>&1; then
-    test -n "$VERBOSE" || echo >&2 'Good, have a satisfydeps file'
-else
-    echo >&2 Could not file satisfydeps file
-    exit 3
-fi
+# if which satisfydeps >/dev/null 2>&1; then
+#     test -n "$VERBOSE" || echo >&2 'Good, have a satisfydeps file'
+# else
+#     echo >&2 Could not file satisfydeps file
+#     exit 3
+# fi
 
 
 # Mount the hostdir
@@ -202,9 +202,10 @@ $action find  "$staging_dir/$source_dir"                                      \
 
 # Install the build dependencies
 test -n "$VERBOSE" || echo >&2 'Install the build dependencies'
-$action sudo apt-get install --no-install-recommends -fy    \
-    $($action satisfydeps "$staging_dir/$source_dir/debian/control")
-
+# $action sudo apt-get install --no-install-recommends -fy    \
+#     $($action satisfydeps "$staging_dir/$source_dir/debian/control")
+$action sudo apt update
+$action sudo apt build-dep -y --no-install-recommends "$staging_dir/$source_dir/"
 
 # Build
 test -n "$VERBOSE" || echo >&2 'Build the package'

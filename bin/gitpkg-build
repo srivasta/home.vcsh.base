@@ -106,7 +106,7 @@ RESULTS_DIR="$(repo_config --get gitpkg-build.results-dir)"
 DEBARCHIVE="$(repo_config --get gitpkg-build.debarchive)"
 
 if [ -n "$DEBARCHIVE" ] && [ -d "$DEBARCHIVE"  ]; then
-    OLD_CHANGES=$(ls -1 "${DEBARCHIVE}"/"${DEB_SOURCE}"_*_${ARCHITECTURE}.changes | sort | tail -n 1)
+    OLD_CHANGES=$(ls -1 "${DEBARCHIVE}"/"${DEB_SOURCE}"_*_${ARCHITECTURE}.changes | sort -n | tail -n 1)
 fi
 
 if [ -n "$RESULTS_DIR" ] && [ -d "$RESULTS_DIR/${DEB_SOURCE}" ]; then
