@@ -3,6 +3,7 @@ for repo in $(vcsh list); do
   vcsh write-gitignore $repo
   vcsh $repo add -f ~/.gitignore.d/$repo
   vcsh write-gitignore $repo
+  perl -pli -e 's{^\!}{!'$HOME'}msx;' ~/.gitignore.d/$repo
   vcsh $repo add ~/.gitignore.d/$repo
   vcsh $repo commit -m "Add/update ~/.gitignore.d/$repo"
 done
