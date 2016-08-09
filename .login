@@ -29,8 +29,8 @@ if ($?path) then
     set path=($HOME/bin $path)
 else
     set path=($HOME/bin /usr/bin .)
-endif
+fi
 stty dec new
 tset -I -Q
-set prompt="`hostname`> "
+set prompt="$(hostname)> "
 set mail=/usr/spool/mail/$USER
