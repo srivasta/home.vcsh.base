@@ -267,5 +267,6 @@
         show-tracking       = !echo \"$(git get-tracking-remote)$(git get-tracking-branch)\"
         diff-tracking       = !git diff $(git show-tracking)
         ctags = !.git/hooks/ctags
+	dos2unix = !git diff --name-only --cached | xargs dos2unix
 [gpg]
         program = gpg
