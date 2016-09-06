@@ -50,6 +50,7 @@
 .emacs.d
 .esd_auth
 .evolution
+.fetchmailrc
 .fontconfig/
 .fonts.conf
 .fonts/
@@ -57,6 +58,8 @@
 .gconfd/
 .gimp-2.2
 .gitk
+.gitignore.d
+.gkrellm2
 .gkrellm2/data
 .gnome
 .gnome
@@ -88,6 +91,7 @@
 .libreoffice/
 .links2/
 .linuxcounter/
+.local
 .local/
 .login
 .lyx/
@@ -124,11 +128,12 @@
 .serverauth*
 .shutter/
 .sqldeveloper/
-.ssh/id_rsa
-.ssh/id_rsa.pub
-.ssh/known_hosts
+.ssh/
 .subversion/
 .swt/
+.steam/
+.steampath
+.steampid
 .thumbnails
 .thunderbird/
 .tome/
@@ -178,10 +183,15 @@
 /Desktop/
 /Downloads/
 /apollo-overrides
+/bin
 /build
 /docs/
+/lib
 /mail/
+/media
+/sbin
 /src
+/tex
 /tmp
 /var/
 /ws
