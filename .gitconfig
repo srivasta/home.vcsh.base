@@ -166,7 +166,7 @@
         # long history, it's probably worth doing some extra work, telling the delta
         # finding code to go wild.
         # schedule a full agressive repack once. -f forces a full --no-reuse-delta
-        full-repack   = repack -a -d -f --window=250 --depth=250
+        full-repack   = repack -a -d -f --window=512 --depth=512
         diffstat      = diff --stat -r
 
         # Diff by highlighting inline word changes instead of whole lines
