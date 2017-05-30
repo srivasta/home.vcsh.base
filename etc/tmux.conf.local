@@ -1,0 +1,275 @@
+# https://github.com/gpakosz/.tmux
+# (‑●‑●)> released under the WTFPL v2 license, by Gregory Pakosz (@gpakosz)
+
+
+#X# # -- navigation ----------------------------------------------------------------
+#X#
+#X# # if you're running tmux within iTerm2
+#X# #   - and tmux is 1.9 or 1.9a
+#X# #   - and iTerm2 is configured to let option key act as +Esc
+#X# #   - and iTerm2 is configured to send [1;9A -> [1;9D for option + arrow keys
+#X# # then uncomment the following line to make Meta + arrow keys mapping work
+#X# #set -ga terminal-overrides "*:kUP3=\e[1;9A,*:kDN3=\e[1;9B,*:kRIT3=\e[1;9C,*:kLFT3=\e[1;9D"
+#X#
+#X#
+#X# # -- windows & pane creation ---------------------------------------------------
+#X#
+#X# # new window retains current path, possible values are:
+#X# #   - true
+#X# #   - false (default)
+#X# tmux_conf_new_window_retain_current_path=false
+#X#
+#X# # new pane retains current path, possible values are:
+#X# #   - true (default)
+#X# #   - false
+#X# tmux_conf_new_pane_retain_current_path=true
+#X#
+#X# # new pane tries to reconnect ssh sessions (experimental), possible values are:
+#X# #   - true
+#X# #   - false (default)
+#X# tmux_conf_new_pane_reconnect_ssh=false
+#X#
+#X# # prompt for session name when creating a new session, possible values are:
+#X# #   - true
+#X# #   - false (default)
+#X# tmux_conf_new_session_prompt=false
+#X#
+#X#
+#X# # -- display -------------------------------------------------------------------
+#X#
+#X# # RGB 24-bit colour support (since tmux 2.2), possible values are:
+#X# #  - true
+#X# #  - false (default)
+#X# tmux_conf_theme_24b_colour=false
+#X#
+#X# # window style
+#X# tmux_conf_theme_window_fg='default'
+#X# tmux_conf_theme_window_bg='default'
+#X#
+#X# # highlight focused pane (tmux 2.1+), possible values are:
+#X# #   - true
+#X# #   - false (default)
+#X# tmux_conf_theme_highlight_focused_pane=false
+#X#
+#X# # focused pane colours:
+#X# tmux_conf_theme_focused_pane_fg='default'
+#X# tmux_conf_theme_focused_pane_bg='#0087d7'               # light blue
+#X#
+#X# # pane border style, possible values are:
+#X# #   - thin (default)
+#X# #   - fat
+#X# tmux_conf_theme_pane_border_style=thin
+#X#
+#X# # pane borders colours:
+#X# tmux_conf_theme_pane_border='#444444'                   # gray
+#X# tmux_conf_theme_pane_active_border='#00afff'            # light blue
+#X#
+#X# # pane indicator colours
+#X# tmux_conf_theme_pane_indicator='#00afff'                # light blue
+#X# tmux_conf_theme_pane_active_indicator='#00afff'         # light blue
+#X#
+#X# # status line style
+#X# tmux_conf_theme_message_fg='#000000'                    # black
+#X# tmux_conf_theme_message_bg='#ffff00'                    # yellow
+#X# tmux_conf_theme_message_attr='bold'
+#X#
+#X# # status line command style (<prefix> : Escape)
+#X# tmux_conf_theme_message_command_fg='#ffff00'            # yellow
+#X# tmux_conf_theme_message_command_bg='#000000'            # black
+#X# tmux_conf_theme_message_command_attr='bold'
+#X#
+#X# # window modes style
+#X# tmux_conf_theme_mode_fg='#000000'                       # black
+#X# tmux_conf_theme_mode_bg='#ffff00'                       # yellow
+#X# tmux_conf_theme_mode_attr='bold'
+#X#
+#X# # status line style
+#X# tmux_conf_theme_status_fg='#8a8a8a'                     # light gray
+#X# tmux_conf_theme_status_bg='#080808'                     # dark gray
+#X# tmux_conf_theme_status_attr='none'
+#X#
+#X# # window status style
+#X# #   - built-in variables are:
+#X# #     - #{circled_window_index}
+#X# tmux_conf_theme_window_status_fg='#8a8a8a'              # light gray
+#X# tmux_conf_theme_window_status_bg='#080808'              # dark gray
+#X# tmux_conf_theme_window_status_attr='none'
+#X# tmux_conf_theme_window_status_format='#I #W'
+#X# #tmux_conf_theme_window_status_format='#{circled_window_index} #W'
+#X# #tmux_conf_theme_window_status_format='#I #W#{?window_bell_flag,🔔,}#{?window_zoomed_flag,🔍,}'
+#X#
+#X# # window current status style
+#X# #   - built-in variables are:
+#X# #     - #{circled_window_index}
+#X# tmux_conf_theme_window_status_current_fg='#000000'      # black
+#X# tmux_conf_theme_window_status_current_bg='#00afff'      # light blue
+#X# tmux_conf_theme_window_status_current_attr='bold'
+#X# tmux_conf_theme_window_status_current_format='#I #W'
+#X# #tmux_conf_theme_window_status_current_format='#{circled_window_index} #W'
+#X# #tmux_conf_theme_window_status_current_format='#I #W#{?window_zoomed_flag,🔍,}'
+#X#
+#X# # window activity status style
+#X# tmux_conf_theme_window_status_activity_fg='default'
+#X# tmux_conf_theme_window_status_activity_bg='default'
+#X# tmux_conf_theme_window_status_activity_attr='underscore'
+#X#
+#X# # window bell status style
+#X# tmux_conf_theme_window_status_bell_fg='#ffff00'         # yellow
+#X# tmux_conf_theme_window_status_bell_bg='default'
+#X# tmux_conf_theme_window_status_bell_attr='blink,bold'
+#X#
+#X# # window last status style
+#X# tmux_conf_theme_window_status_last_fg='#00afff'         # light blue
+#X# tmux_conf_theme_window_status_last_bg='default'
+#X# tmux_conf_theme_window_status_last_attr='none'
+#X#
+#X# # status left/right sections separators
+#X# tmux_conf_theme_left_separator_main=''
+#X# tmux_conf_theme_left_separator_sub='|'
+#X# tmux_conf_theme_right_separator_main=''
+#X# tmux_conf_theme_right_separator_sub='|'
+#X# #tmux_conf_theme_left_separator_main=''  # /!\ you don't need to install powerline
+#X# #tmux_conf_theme_left_separator_sub=''   #   you only need fonts patched with
+#X# #tmux_conf_theme_right_separator_main='' #   powerline symbols or the standalone
+#X# #tmux_conf_theme_right_separator_sub=''  #   PowerlineSymbols.otf font
+#X#
+#X# # status left/right content:
+#X# #   - separate main sections with '|'
+#X# #   - separate subsections with ','
+#X# #   - built-in variables are:
+#X# #     - #{battery_bar}
+#X# #     - #{battery_hbar}
+#X# #     - #{battery_percentage}
+#X# #     - #{battery_status}
+#X# #     - #{battery_vbar}
+#X# #     - #{circled_session_name}
+#X# #     - #{hostname_ssh}
+#X# #     - #{hostname}
+#X# #     - #{loadavg}
+#X# #     - #{pairing}
+#X# #     - #{prefix}
+#X# #     - #{root}
+#X# #     - #{uptime_d}
+#X# #     - #{uptime_h}
+#X# #     - #{uptime_m}
+#X# #     - #{uptime_s}
+#X# #     - #{username}
+#X# #     - #{username_ssh}
+#X# tmux_conf_theme_status_left=' ❐ #S | ↑#{?uptime_d, #{uptime_d}d,}#{?uptime_h, #{uptime_h}h,}#{?uptime_m, #{uptime_m}m,} '
+#X# tmux_conf_theme_status_right='#{prefix}#{pairing}#{?battery_status, #{battery_status},}#{?battery_bar, #{battery_bar},}#{?battery_percentage, #{battery_percentage},} , %R , %d %b | #{username}#{root} | #{hostname} '
+#X#
+#X# # status left style
+#X# tmux_conf_theme_status_left_fg='#000000,#e4e4e4,#e4e4e4'  # black, white , white
+#X# tmux_conf_theme_status_left_bg='#ffff00,#ff00af,#00afff'  # yellow, pink, white blue
+#X# tmux_conf_theme_status_left_attr='bold,none,none'
+#X#
+#X# # status right style
+#X# tmux_conf_theme_status_right_fg='#8a8a8a,#e4e4e4,#000000' # light gray, white, black
+#X# tmux_conf_theme_status_right_bg='#080808,#d70000,#e4e4e4' # dark gray, red, white
+#X# tmux_conf_theme_status_right_attr='none,none,bold'
+#X#
+#X# # pairing indicator
+#X# tmux_conf_theme_pairing='👓'          # U+1F453
+#X# tmux_conf_theme_pairing_fg='none'
+#X# tmux_conf_theme_pairing_bg='none'
+#X# tmux_conf_theme_pairing_attr='none'
+#X#
+#X# # prefix indicator
+#X# tmux_conf_theme_prefix='⌨'            # U+2328
+#X# tmux_conf_theme_prefix_fg='none'
+#X# tmux_conf_theme_prefix_bg='none'
+#X# tmux_conf_theme_prefix_attr='none'
+#X#
+#X# # root indicator
+#X# tmux_conf_theme_root='!'
+#X# tmux_conf_theme_root_fg='none'
+#X# tmux_conf_theme_root_bg='none'
+#X# tmux_conf_theme_root_attr='bold,blink'
+#X#
+#X# # battery bar symbols
+#X# tmux_conf_battery_bar_symbol_full='◼'
+#X# tmux_conf_battery_bar_symbol_empty='◻'
+#X# #tmux_conf_battery_bar_symbol_full='♥'
+#X# #tmux_conf_battery_bar_symbol_empty='·'
+#X#
+#X# # battery bar length (in number of symbols), possible values are:
+#X# #   - auto
+#X# #   - a number, e.g. 5
+#X# tmux_conf_battery_bar_length='auto'
+#X#
+#X# # battery bar palette, possible values are:
+#X# #   - gradient (default)
+#X# #   - heat
+#X# #   - 'colour_full_fg,colour_empty_fg,colour_bg'
+#X# tmux_conf_battery_bar_palette='gradient'
+#X# #tmux_conf_battery_bar_palette='#d70000,#e4e4e4,#000000'   # red, white, black
+#X#
+#X# # battery hbar palette, possible values are:
+#X# #   - gradient (default)
+#X# #   - heat
+#X# #   - 'colour_low,colour_half,colour_full'
+#X# tmux_conf_battery_hbar_palette='gradient'
+#X# #tmux_conf_battery_hbar_palette='#d70000,#ff5f00,#5fff00'  # red, orange, green
+#X#
+#X# # battery vbar palette, possible values are:
+#X# #   - gradient (default)
+#X# #   - heat
+#X# #   - 'colour_low,colour_half,colour_full'
+#X# tmux_conf_battery_vbar_palette='gradient'
+#X# #tmux_conf_battery_vbar_palette='#d70000,#ff5f00,#5fff00'  # red, orange, green
+#X#
+#X# # symbols used to indicate whether battery is charging or discharging
+#X# tmux_conf_battery_status_charging='⚡'     # U+26A1
+#X# tmux_conf_battery_status_discharging='🔋'  # U+1F50B
+#X#
+#X# # clock style
+#X# tmux_conf_theme_clock_colour='#00afff'  # light blue
+#X# tmux_conf_theme_clock_style='24'
+#X#
+#X#
+#X# # ------------------------------------------------------------------------------
+#X# # this is the place to override or undo settings
+#X#
+#X# # increase history size
+#X# #set -g history-limit 10000
+#X#
+#X# # force Vi mode
+#X# #   really you should export VISUAL or EDITOR environment variable, see manual
+#X# #set -g status-keys vi
+#X# #set -g mode-keys vi
+#X#
+#X# # move status line to top
+#X# #set -g status-position top
+
+unbind-key C-b
+unbind-key C-a
+set -g prefix C-o
+bind-key C-o send-prefix
+
+set-option -g default-command '/bin/zsh -i'
+
+# split panes using | and -
+unbind '"'
+unbind %
+bind | split-window -h
+bind - split-window -v
+
+
+bind-key -t emacs-copy M-w copy-pipe "xsel -i -p && xsel -o -p | xsel -i -b"
+bind-key C-y run "xsel -o | tmux load-buffer - ; tmux paste-buffer"
+
+# Rather than constraining window size to the maximum size of any client
+# connected to the *session*, constrain window size to the maximum size of any
+# client connected to *that window*. Much more reasonable.
+set -g aggressive-resize on
+# Pane switching with Alt+arrow without prefix
+bind -n M-Left select-pane -L
+bind -n M-Right select-pane -R
+bind -n M-Up select-pane -U
+bind -n M-Down select-pane -D
+
+# move between windows
+bind e previous-window
+bind f next-window
+bind E swap-window -t -1
+bind F swap-window -t +1

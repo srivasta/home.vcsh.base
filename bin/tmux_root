@@ -1,0 +1,8 @@
+#!/bin/bash
+_root() {
+  username=$(tmux_username "$tty" false "$@")
+  if [ x"$username" = x"root" ]; then
+    tmux show -gqv '@root'
+  fi
+}
+_root "$@"
