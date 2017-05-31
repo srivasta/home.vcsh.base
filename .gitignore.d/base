@@ -45,6 +45,8 @@
 !/home/srivasta/bin/gen_color.pl
 !/home/srivasta/bin/getauth
 !/home/srivasta/bin/getdctrl
+!/home/srivasta/bin/get_freemem
+!/home/srivasta/bin/get_freeswap
 !/home/srivasta/bin/get-pkgs
 !/home/srivasta/bin/get_volume
 !/home/srivasta/bin/git-add-backup-hook
