@@ -56,3 +56,5 @@ SECLIB=lib/.sec/
 ##17      3    * * 7   ($HOME/sbin/gen-opt-cache)&
 
 #44      6    * * *   ($HOME/sbin/do-gnus >& $HOME/var/log/gnus.log )&
+
+*/5 * * * * $HOME/sbin/duck.sh >/dev/null 2>&1
