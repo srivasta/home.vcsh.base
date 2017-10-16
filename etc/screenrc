@@ -8,7 +8,7 @@ bind k
 bind ^k
 bind .
 bind ^\
-bind \\
+#bind \\
 bind ^h
 bind h
 #make them better
@@ -16,6 +16,7 @@ bind 'K' kill
 bind 'I' login on
 bind 'O' login off
 bind '}' history
+bind 'e' quit
 
 # Yet another hack:
 # Prepend/append register [/] to the paste if ^a^] is pressed.
