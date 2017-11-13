@@ -3,6 +3,15 @@
         email = srivasta@golden-gryphon.com
         signingkey = 0xC5779A1C
 
+[collumn]
+	ui = auto
+
+[commit]
+	gpgsign = true
+
+[core]
+        excludesfile = /home/srivasta/etc/global-gitignore
+
 [diff]
         renames     = copies
         renamelimit = 200
@@ -13,6 +22,9 @@
 
 [diff "texinfo"]
       xfuncname = "^@node[ \t][ \t]*\\([^,][^,]*\\)"
+
+[interactive]
+	singleKey = true
 
 [merge]
 	tool = ediff
@@ -32,13 +44,8 @@
       name = GNU-style ChangeLog merge driver
 	driver = /usr/local/bin/git-merge-changelog %O %A %B
 
-[commit]
-	gpgsign = true
 [push]
         default = upstream
-[core]
-        excludesfile = /home/srivasta/etc/global-gitignore
-
 [transfer]
         fsckObjects = true
 [fetch]
@@ -193,7 +200,7 @@
         llog          = log --date=local
         k             = !gitk
         new           = diff ORIG_HEAD
-
+	pwb           = rev-parse --abbrev-ref HEAD
         amend         = commit --amend
         up            = pull --rebase
 
