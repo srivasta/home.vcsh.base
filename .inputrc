@@ -22,7 +22,7 @@ set output-meta on
 # if there are more than 150 possible completions for
 # a word, ask the user if he wants to see all of them
 set completion-query-items 150
-     
+
 # For FTP
 $if Ftp
 "\C-xg": "get \M-?"
@@ -128,27 +128,27 @@ $endif
 # `on' means that the text of the lines being edited will scroll
 # horizontally on a single screen line when they are longer than the
 # width of the screen, instead of wrapping onto a new screen line.  By
-# default, this variable is set to `off'. 
+# default, this variable is set to `off'.
 set horizontal-scroll-mode off
 
 # This variable, when set to `on', causes Readline to display an
 # asterisk (`*') at the start of history lines which have been
-# modified.  This variable is `off' by default. 
+# modified.  This variable is `off' by default.
 set mark-modified-lines on
 
 # If set to `on', completed directory names have a slash appended.
-# The default is `on'. 
+# The default is `on'.
 set mark-directories on
 
 # If set to `on', completed names which are symbolic links to
 # directories have a slash appended (subject to the value of
-# `mark-directories').  The default is `off'. 
+# `mark-directories').  The default is `off'.
 set mark-symlinked-directories on
 
 # This alters the default behavior of the completion functions. If set
 # to `on', words which have more than one possible completion cause
 # the matches to be listed immediately instead  of ringing the bell.
-# The default value is `off'. 
+# The default value is `off'.
 set show-all-if-ambiguous on
 
 
@@ -157,3 +157,5 @@ set show-all-if-ambiguous on
 "\e[3~": delete-char
 "\e[4~": end-of-line
 
+## https://cirw.in/blog/bracketed-paste
+set enable-bracketed-paste off
