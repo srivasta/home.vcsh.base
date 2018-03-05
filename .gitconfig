@@ -41,8 +41,8 @@
         driver = dpkg-mergechangelogs -m %O %A %B %A
 
 [merge "merge-changelog"]
-      name = GNU-style ChangeLog merge driver
-	driver = /usr/local/bin/git-merge-changelog %O %A %B
+        name = GNU-style ChangeLog merge driver
+        driver = /usr/local/bin/git-merge-changelog %O %A %B
 
 [push]
         default = upstream
@@ -71,7 +71,7 @@
         no-sign = 1
         command = ssh
         options = -t
-        options = 192.168.122.45
+        options = buildd.internal.golden-gryphon.com
         options = /usr/local/bin/remote_build
         options = PACKAGE_NAME_HERE
         # command = pdebuild
@@ -107,14 +107,6 @@
 # + if it is linear, one branch makes sense.
 # + If you need to isolate features and work on them for a long period
 #   of time and repeatedly merge them, several branches make sense.
-
-[merge]
-    tool = ediff
-
-[merge "merge-changelog"]
-        name = GNU-style ChangeLog merge driver
-        driver = /usr/local/bin/git-merge-changelog %O %A %B
-
 
 [rerere]
   enabled = 1
@@ -191,7 +183,8 @@
         co            = checkout
         ci            = commit -s
         st            = status -sb
-        br            = branch
+	br            = branch
+	cp            = cherry-pick
         pi            = cherry-pick
         pff           = pull --ff-only
         dt            = difftool
@@ -273,7 +266,8 @@
         get-tracking-branch = !basename $(git config branch.$(git name-rev --name-only HEAD).merge)
         show-tracking       = !echo \"$(git get-tracking-remote)$(git get-tracking-branch)\"
         diff-tracking       = !git diff $(git show-tracking)
-        ctags = !.git/hooks/ctags
+	ctags = !.git/hooks/ctags
+	lp = log -p
 	dos2unix = !git diff --name-only --cached | xargs dos2unix
 [gpg]
         program = gpg
