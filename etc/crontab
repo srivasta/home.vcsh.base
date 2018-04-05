@@ -14,7 +14,7 @@ SECLIB=lib/.sec/
 50      2    2 * *   /usr/bin/find /backup/mail -type f -name "[0-9_]*" -mtime +30 -print0 | xargs -0r bzip2 -9
 
 44      3    * * 6    ($HOME/bin/build_emacs >& $HOME/var/log/emacs.log)&
-10,30,50    0-23 * * *   mv $HOME/etc/emacs/config/*.elc $HOME/etc/emacs/emacs/26/
+10,30,50    0-23 * * *   find $HOME/etc/emacs/config/ -type f -name \*.elc -exec mv {} $HOME/etc/emacs/emacs26/ \;
 
 
 34      3    * * *   ($HOME/sbin/check_watch)&

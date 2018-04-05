@@ -271,3 +271,5 @@
 	dos2unix = !git diff --name-only --cached | xargs dos2unix
 [gpg]
         program = gpg
+[github]
+	user = srivasta
